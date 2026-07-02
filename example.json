@@ -1,0 +1,153 @@
+{
+  "id": "human gish",
+  "groups": [
+    {
+      "type": "field_group",
+      "name": "basics",
+      "fields": [
+        {
+          "name": "name",
+          "value": { "type": "text", "value": "John Actionman" }
+        },
+        { "name": "species", "value": { "type": "text", "value": "human" } },
+        { "name": "class", "value": { "type": "text", "value": "gish" } },
+        { "name": "player", "value": { "type": "text", "value": "Bucsi" } },
+        { "name": "level", "value": { "type": "integer", "value": 1 } },
+        { "name": "proficiency", "value": { "type": "modifier", "value": 2 } },
+        {
+          "name": "inspiration",
+          "value": { "type": "checkbox", "value": "off" }
+        }
+      ]
+    },
+    {
+      "type": "super_group",
+      "name": "attributes",
+      "groups": [
+        {
+          "type": "field_group",
+          "name": "strength",
+          "fields": [
+            { "name": "Strength", "value": { "type": "integer", "value": 10 } },
+            {
+              "name": "Strength Modifier",
+              "value": { "type": "modifier", "value": 0 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "super_group",
+      "name": "Saving Throws",
+      "groups": [
+        {
+          "type": "field_group",
+          "name": "strength",
+          "fields": [
+            {
+              "name": "Saving Throw",
+              "value": { "type": "modifier", "value": 2 }
+            },
+            {
+              "name": "Proficient?",
+              "value": { "type": "checkbox", "value": "on" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "field_group",
+      "name": "Senses",
+      "fields": [
+        {
+          "name": "Passive Perception",
+          "value": { "type": "integer", "value": 9 }
+        },
+        {
+          "name": "Additional",
+          "value": { "type": "text", "value": "Darkvision 30ft." }
+        }
+      ]
+    },
+    {
+      "type": "super_group",
+      "name": "Skills",
+      "groups": [
+        {
+          "type": "field_group",
+          "name": "Acrobatics",
+          "fields": [
+            { "name": "mod", "value": { "type": "modifier", "value": 2 } },
+            { "name": "ability", "value": { "type": "text", "value": "Dex" } },
+            {
+              "name": "proficient",
+              "value": { "type": "checkbox", "value": "special" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "field_group",
+      "name": "combat",
+      "fields": [
+        {
+          "name": "hp",
+          "value": {
+            "type": "resource",
+            "value": 10,
+            "max": 10,
+            "recovery": { "on": "longRest", "kind": { "type": "to_full" } }
+          }
+        },
+        { "name": "ac", "value": { "type": "integer", "value": 12 } },
+        { "name": "initiative", "value": { "type": "modifier", "value": 2 } }
+      ]
+    },
+    {
+      "type": "field_group",
+      "name": "actions",
+      "fields": [
+        {
+          "name": "Shortsword",
+          "value": {
+            "type": "long_text",
+            "value": "",
+            "excerpt": "+1 to hit (DEX), 1d6+2 piercing, Simple, Finesse",
+            "reference": "https://5etools.bucsi.net/items.html#shortsword_xphb"
+          }
+        },
+        {
+          "name": "Fire Bolt",
+          "value": {
+            "type": "long_text",
+            "value": "https://li.nk",
+            "excerpt": "+8 to hit (INT), 2d10 fire, V/S, 120ft.",
+            "reference": ""
+          }
+        }
+      ]
+    },
+    {
+      "type": "field_group",
+      "name": "Proficiencies & Training",
+      "fields": [
+        { "name": "Armor", "value": { "type": "text", "value": "None" } },
+        {
+          "name": "Weapons",
+          "value": { "type": "text", "value": "Simple Weapons" }
+        },
+        {
+          "name": "Tools",
+          "value": { "type": "text", "value": "Calligraphers'" }
+        },
+        {
+          "name": "Languages",
+          "value": { "type": "text", "value": "Common, Elvish" }
+        }
+      ]
+    }
+  ]
+}
