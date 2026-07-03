@@ -1,83 +1,99 @@
-// import gleam/bool
-// import gleam/dict
-// import gleam/int
-// import gleam/json
-// import gleam/list
-// import gleam/result
+import gleam/bool
+import gleam/dict
+import gleam/dynamic/decode
+import gleam/int
+import gleam/json
+import gleam/list
+import gleam/option
+import gleam/result
+import gleam/string
 
-// import plinth/javascript/console
-// import plinth/javascript/storage
-// import varasto
+import lanyard.{NanoID}
+import plinth/browser/location
+import plinth/browser/window
+import plinth/javascript/console
+import plinth/javascript/storage
+import varasto
 
-// import lustre
-// import lustre/attribute
-// import lustre/element
-// import lustre/element/html.{div, hr, input, li, section, ul}
-// import lustre/event.{on_click, on_keypress}
+import lustre
+import lustre/attribute.{readonly, type_, value}
+import lustre/element
+import lustre/element/html.{div, hr, input, li, section, textarea, ul}
+import lustre/event.{on_click, on_keypress}
 
-// import chrs/task.{
-//   type Task, type Tasks, Task, Tasks, tasks_decoder, tasks_to_json,
-// }
+import chrs/sheet.{type Sheet, Sheet}
 
-// const key = "net.bucsi.simplest.tasks"
+const key_prefix = "net.bucsi.chrs.characters."
 
-// const localstorage_set_failure = "LocalStorage.set failed!"
+const localstorage_set_failure = "LocalStorage.set failed!"
 
-// pub type Message {
-//   UserUpdatedCurrentlyEditedTask(currently_edited_task: String)
-//   UserSavedCurrentlyEditedTask
-//   Nothing
-// }
+pub type Message {
+  //   UserUpdatedCurrentlyEditedTask(currently_edited_task: String)
+  //   UserSavedCurrentlyEditedTask
+  Nothing
+}
 
 // pub type NewTaskData {
 //   NewTaskData(description: String)
 // }
 
-// pub type Model {
-//   Model(save: fn(Tasks) -> Tasks, tasks: Tasks, currently_edited_task: String)
-// }
+pub type Model {
+  Model(save: fn(Sheet, String) -> Sheet, sheet: Sheet, id: String)
+  NoCharacterSelected
+}
 
-// pub fn main() {
-//   let app = lustre.simple(init, update, view)
-//   let assert Ok(_) = lustre.start(app, "#app", Nil)
+pub fn main() {
+  let app = lustre.simple(init, update, view)
+  let assert Ok(_) = lustre.start(app, "#app", Nil)
 
-//   Nil
-// }
+  Nil
+}
 
-// fn init(_flags: a) -> Model {
-//   let assert Ok(local) = storage.local()
-//   let typed_storage = varasto.new(local, tasks_decoder(), tasks_to_json)
+fn init(_flags: a) -> Model {
+  let pathname =
+    window.self()
+    |> window.location()
+    |> location.pathname()
 
-//   let save = fn(value: Tasks) -> Tasks {
-//     case varasto.set(typed_storage, key, value) {
-//       Ok(_) -> value
-//       Error(_) -> {
-//         console.error(localstorage_set_failure)
-//         console.log(value |> tasks_to_json |> json.to_string)
-//         panic as localstorage_set_failure
-//       }
-//     }
-//   }
+  console.debug("pathname: " <> pathname)
+  case pathname {
+    "/" <> str if str != "" -> do_init(str)
+    _ -> NoCharacterSelected
+  }
+}
 
-//   let tasks = case typed_storage |> varasto.get(key) {
-//     Ok(value) -> value
-//     Error(_) -> {
-//       console.debug("No saved tasks found, starting fresh.")
-//       save(Tasks(dict.new(), dict.new()))
-//     }
-//   }
+fn do_init(local_id: String) -> Model {
+  console.debug("do_init")
+  let assert Ok(local) = storage.local()
+  let typed_storage = varasto.new(local, sheet.decoder(), sheet.to_json)
 
-//   Model(save:, tasks:, currently_edited_task: "")
-// }
+  let save = fn(new_sheet: Sheet, id: String) -> Sheet {
+    case varasto.set(typed_storage, key_prefix <> id, new_sheet) {
+      Ok(_) -> new_sheet
+      Error(_) -> {
+        console.error(localstorage_set_failure)
+        console.log(new_sheet |> sheet.to_json |> json.to_string)
+        panic as localstorage_set_failure
+      }
+    }
+  }
 
-// fn update(model: Model, msg: Message) -> Model {
-//   case msg {
-//     UserUpdatedCurrentlyEditedTask(currently_edited_task:) ->
-//       Model(..model, currently_edited_task:)
-//     UserSavedCurrentlyEditedTask -> add_task(model)
-//     Nothing -> model
-//   }
-// }
+  let sheet = case typed_storage |> varasto.get(key_prefix <> local_id) {
+    Ok(value) -> value
+    Error(_) -> {
+      console.debug("No saved sheet found, starting fresh.")
+      save(Sheet(local_id, []), local_id)
+    }
+  }
+
+  Model(save, sheet, local_id)
+}
+
+fn update(model: Model, msg: Message) -> Model {
+  case msg {
+    Nothing -> model
+  }
+}
 
 // fn move_done_task_to_do(model: Model, id: Int) -> Model {
 //   let Tasks(do:, done:) = model.tasks
@@ -120,6 +136,39 @@
 //   Model(..model, tasks:, currently_edited_task: "")
 // }
 
+fn view(model: Model) {
+  use <- bool.guard(
+    when: model == NoCharacterSelected,
+    return: view_no_character_selected(),
+  )
+
+  let assert Model(_, _, _) = model
+
+  div([], [
+    section([], [
+      textarea(
+        [
+          readonly(True),
+        ],
+        model.sheet |> sheet.to_json |> json.to_string,
+      ),
+    ]),
+  ])
+}
+
+fn view_no_character_selected() {
+  let NanoID(first4) = lanyard.custom_length(4)
+  let NanoID(last4) = lanyard.custom_length(4)
+  let id = first4 <> "-" <> last4
+  div([], [
+    section([], [
+      html.text(
+        "No character selected. Please select a character, or create a new one with id: ",
+      ),
+      html.a([attribute.href("/" <> id)], [html.text(id)]),
+    ]),
+  ])
+}
 // fn view(model: Model) {
 //   let Tasks(do:, done:) = model.tasks
 //   div([], [
