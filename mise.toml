@@ -4,6 +4,8 @@ run = " gleam run -m lustre/dev start"
 description = "Start the development server using lustre_dev_tools"
 
 [tools]
+bun = "latest"
+erlang = "latest"
 gleam = "latest"
 node = "latest"
 rebar = "latest"

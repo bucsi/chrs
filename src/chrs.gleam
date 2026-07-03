@@ -19,7 +19,8 @@ import lustre
 import lustre/attribute.{checked, readonly, type_, value}
 import lustre/element
 import lustre/element/html.{
-  div, fieldset, hr, input, label, legend, li, section, textarea, ul,
+  div, fieldset, hr, input, label, legend, li, main as main_, section, textarea,
+  ul,
 }
 import lustre/event.{on_click, on_keypress}
 
@@ -199,10 +200,7 @@ fn update(model: Model, msg: Message) -> Model {
       edit_field(model, path, fn(field) {
         case field.value {
           LongText(excerpt:, reference:, ..) ->
-            Field(
-              ..field,
-              value: LongText(value: new, excerpt:, reference:),
-            )
+            Field(..field, value: LongText(value: new, excerpt:, reference:))
           _ -> field
         }
       })
@@ -210,10 +208,7 @@ fn update(model: Model, msg: Message) -> Model {
       edit_field(model, path, fn(field) {
         case field.value {
           LongText(value:, reference:, ..) ->
-            Field(
-              ..field,
-              value: LongText(value:, excerpt: new, reference:),
-            )
+            Field(..field, value: LongText(value:, excerpt: new, reference:))
           _ -> field
         }
       })
@@ -221,10 +216,7 @@ fn update(model: Model, msg: Message) -> Model {
       edit_field(model, path, fn(field) {
         case field.value {
           LongText(value:, excerpt:, ..) ->
-            Field(
-              ..field,
-              value: LongText(value:, excerpt:, reference: new),
-            )
+            Field(..field, value: LongText(value:, excerpt:, reference: new))
           _ -> field
         }
       })
@@ -242,7 +234,8 @@ fn edit_field(
   case model {
     NoCharacterSelected -> model
     Model(sheet:, id:, save:, ..) -> {
-      let new_sheet = Sheet(..sheet, groups: map_field_at(sheet.groups, path, f))
+      let new_sheet =
+        Sheet(..sheet, groups: map_field_at(sheet.groups, path, f))
       Model(..model, sheet: save(new_sheet, id))
     }
   }
@@ -425,7 +418,7 @@ fn view(model: Model) {
 
   let assert Model(..) = model
 
-  div([], [
+  main_([], [
     view_recovery_bar(recovery_triggers(model.sheet.groups)),
     div(
       [attribute.class("groups")],
