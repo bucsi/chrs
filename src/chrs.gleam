@@ -36,6 +36,8 @@ const localstorage_set_failure = "LocalStorage.set failed!"
 pub type Message {
   //   UserUpdatedCurrentlyEditedTask(currently_edited_task: String)
   //   UserSavedCurrentlyEditedTask
+  UserEditedRawJson(raw: String)
+  UserSubmittedRawJson
   Nothing
 }
 
@@ -44,7 +46,13 @@ pub type Message {
 // }
 
 pub type Model {
-  Model(save: fn(Sheet, String) -> Sheet, sheet: Sheet, id: String)
+  Model(
+    save: fn(Sheet, String) -> Sheet,
+    sheet: Sheet,
+    id: String,
+    draft_json: String,
+    parse_error: String,
+  )
   NoCharacterSelected
 }
 
@@ -98,12 +106,33 @@ fn do_init(local_id: String) -> Model {
     }
   }
 
-  Model(save, sheet, local_id)
+  Model(
+    save:,
+    sheet:,
+    id: local_id,
+    draft_json: sheet |> sheet.to_json |> json.to_string,
+    parse_error: "",
+  )
 }
 
 fn update(model: Model, msg: Message) -> Model {
   case msg {
     Nothing -> model
+    UserEditedRawJson(raw:) ->
+      case model {
+        NoCharacterSelected -> model
+        Model(..) -> Model(..model, draft_json: raw)
+      }
+    UserSubmittedRawJson ->
+      case model {
+        NoCharacterSelected -> model
+        Model(save:, id:, draft_json:, ..) ->
+          case json.parse(draft_json, sheet.decoder()) {
+            Ok(new_sheet) ->
+              Model(..model, sheet: model.save(new_sheet, id), parse_error: "")
+            Error(err) -> Model(..model, parse_error: string.inspect(err))
+          }
+      }
   }
 }
 
@@ -154,10 +183,21 @@ fn view(model: Model) {
     return: view_no_character_selected(),
   )
 
-  let assert Model(_, _, _) = model
+  let assert Model(..) = model
 
   div([], [
     div([], list.map(model.sheet.groups, view_group)),
+    html.details([], [
+      html.summary([], [html.text("raw json")]),
+      textarea([event.on_input(UserEditedRawJson)], model.draft_json),
+      case model.parse_error {
+        err if err != "" -> html.pre([], [html.text(err)])
+        _ -> element.none()
+      },
+      html.button([event.on_click(UserSubmittedRawJson)], [
+        html.text("apply"),
+      ]),
+    ]),
   ])
 }
 
