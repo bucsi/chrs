@@ -35,7 +35,7 @@ pub type CheckboxValue {
 }
 
 pub type RecoveryRule {
-  RecoveryRule(on: String, kind: RecoveryKind)
+  RecoveryRule(on: List(String), kind: RecoveryKind)
 }
 
 pub type RecoveryKind {
@@ -128,7 +128,7 @@ fn resource_kind_to_json(resource_kind: ResourceKind) -> json.Json {
 fn recovery_rule_to_json(recovery_rule: RecoveryRule) -> json.Json {
   let RecoveryRule(on:, kind:) = recovery_rule
   json.object([
-    #("on", json.string(on)),
+    #("on", json.array(on, json.string)),
     #("kind", recovery_kind_to_json(kind)),
   ])
 }
@@ -236,7 +236,7 @@ fn field_decoder() -> decode.Decoder(Field) {
 }
 
 fn recovery_rule_decoder() -> decode.Decoder(RecoveryRule) {
-  use on <- decode.field("on", decode.string)
+  use on <- decode.field("on", decode.list(decode.string))
   use kind <- decode.field("kind", recovery_kind_decoder())
   decode.success(RecoveryRule(on:, kind:))
 }

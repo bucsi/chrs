@@ -49,7 +49,10 @@ pub fn hello_world_test() {
       ]),
 
       FieldGroup("combat", [
-        Field("hp", Resource(10, 10, RecoveryRule("longRest", ToFull), Numeric)),
+        Field(
+          "hp",
+          Resource(10, 10, RecoveryRule(["longRest"], ToFull), Numeric),
+        ),
         Field("ac", Integer(12)),
         Field("initiative", Modifier(2)),
       ]),

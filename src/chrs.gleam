@@ -24,9 +24,10 @@ import lustre/element/html.{
 import lustre/event.{on_click, on_keypress}
 
 import chrs/sheet.{
-  type Field, type FieldValue, type Group, type Sheet, Checkbox, Counter, Field,
-  FieldGroup, Integer, LongText, Modifier, Numeric, Off, On, Resource, Sheet,
-  Special, SuperGroup, Text,
+  type Field, type FieldValue, type Group, type RecoveryKind, type Sheet,
+  ByAmount, Checkbox, Counter, Field, FieldGroup, Integer, LongText, Modifier,
+  Numeric, Off, On, Resource, Sheet, Special, SuperGroup, Text, ToFull,
+  ToHalfMax,
 }
 
 const key_prefix = "net.bucsi.chrs.characters."
@@ -39,6 +40,7 @@ pub type Message {
   UserEditedRawJson(raw: String)
   UserSubmittedRawJson
   UserSetResourceValue(path: List(String), value: Int)
+  UserTriggeredRecovery(on: String)
   Nothing
 }
 
@@ -143,6 +145,15 @@ fn update(model: Model, msg: Message) -> Model {
           Model(..model, sheet: save(new_sheet, id))
         }
       }
+    UserTriggeredRecovery(on:) ->
+      case model {
+        NoCharacterSelected -> model
+        Model(sheet:, id:, save:, ..) -> {
+          let new_sheet =
+            Sheet(..sheet, groups: apply_recovery(sheet.groups, on))
+          Model(..model, sheet: save(new_sheet, id))
+        }
+      }
   }
 }
 
@@ -197,6 +208,74 @@ fn set_resource_in_fields(
   }
 }
 
+fn apply_recovery(groups: List(Group), on: String) -> List(Group) {
+  list.map(groups, fn(group) {
+    case group {
+      FieldGroup(name:, fields:) ->
+        FieldGroup(name:, fields: apply_recovery_to_fields(fields, on))
+      SuperGroup(name:, groups: subgroups) ->
+        SuperGroup(name:, groups: apply_recovery(subgroups, on))
+    }
+  })
+}
+
+fn apply_recovery_to_fields(fields: List(Field), on: String) -> List(Field) {
+  list.map(fields, fn(field) {
+    case field {
+      Field(name:, value: Resource(value:, max:, recovery:, kind:)) ->
+        case list.contains(recovery.on, on) {
+          True -> {
+            let new_value = apply_recovery_kind(value, max, recovery.kind)
+            // Numeric may be over max; still clamp *down* to max on recovery
+            // ("recover to full" = "set to max"). Counter is already <= max.
+            Field(
+              name:,
+              value: Resource(value: new_value, max:, recovery:, kind:),
+            )
+          }
+          False -> field
+        }
+      _ -> field
+    }
+  })
+}
+
+fn apply_recovery_kind(current: Int, max: Int, kind: RecoveryKind) -> Int {
+  case kind {
+    ToFull -> max
+    ToHalfMax -> max / 2
+    ByAmount(value: n) -> int.min(current + n, max) |> int.max(0)
+  }
+}
+
+// Distinct RecoveryRule.on strings across every Resource in the sheet, in the
+// order they first appear (walking groups depth-first, fields left-to-right).
+fn recovery_triggers(groups: List(Group)) -> List(String) {
+  groups
+  |> list.fold([], collect_triggers_from_group)
+  |> list.reverse
+}
+
+fn collect_triggers_from_group(acc: List(String), group: Group) -> List(String) {
+  case group {
+    FieldGroup(fields:, ..) ->
+      list.fold(fields, acc, fn(acc, field) {
+        case field {
+          Field(value: Resource(recovery:, ..), ..) ->
+            list.fold(recovery.on, acc, fn(acc, trigger) {
+              case list.contains(acc, trigger) {
+                True -> acc
+                False -> [trigger, ..acc]
+              }
+            })
+          _ -> acc
+        }
+      })
+    SuperGroup(groups: subgroups, ..) ->
+      list.fold(subgroups, acc, collect_triggers_from_group)
+  }
+}
+
 // fn move_done_task_to_do(model: Model, id: Int) -> Model {
 //   let Tasks(do:, done:) = model.tasks
 
@@ -247,6 +326,7 @@ fn view(model: Model) {
   let assert Model(..) = model
 
   div([], [
+    view_recovery_bar(recovery_triggers(model.sheet.groups)),
     div([], list.map(model.sheet.groups, view_group(_, []))),
     html.details([], [
       html.summary([], [html.text("raw json")]),
@@ -260,6 +340,21 @@ fn view(model: Model) {
       ]),
     ]),
   ])
+}
+
+fn view_recovery_bar(triggers: List(String)) -> element.Element(Message) {
+  case triggers {
+    [] -> element.none()
+    _ ->
+      div(
+        [attribute.role("group")],
+        list.map(triggers, fn(on) {
+          html.button([event.on_click(UserTriggeredRecovery(on:))], [
+            html.text(on),
+          ])
+        }),
+      )
+  }
 }
 
 fn view_group(
