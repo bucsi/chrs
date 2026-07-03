@@ -36,8 +36,6 @@ const key_prefix = "net.bucsi.chrs.characters."
 const localstorage_set_failure = "LocalStorage.set failed!"
 
 pub type Message {
-  //   UserUpdatedCurrentlyEditedTask(currently_edited_task: String)
-  //   UserSavedCurrentlyEditedTask
   UserEditedRawJson(raw: String)
   UserSubmittedRawJson
   UserSetResourceValue(path: List(String), value: Int)
@@ -51,10 +49,6 @@ pub type Message {
   UserSetLongTextReference(path: List(String), value: String)
   Nothing
 }
-
-// pub type NewTaskData {
-//   NewTaskData(description: String)
-// }
 
 pub type Model {
   Model(
@@ -192,8 +186,8 @@ fn update(model: Model, msg: Message) -> Model {
         case field.value {
           Checkbox(value: Off) -> Field(..field, value: Checkbox(value: On))
           Checkbox(value: On) -> Field(..field, value: Checkbox(value: Off))
-          // Special is read-only per design; ignore.
-          _ -> field
+          Checkbox(value: Special) -> field
+          _ -> panic as "unreachable"
         }
       })
     UserSetLongTextValue(path:, value: new) ->
@@ -223,9 +217,6 @@ fn update(model: Model, msg: Message) -> Model {
   }
 }
 
-/// Apply a field-level edit at `path` and persist. If the path doesn't
-/// resolve or the field's variant doesn't match what `f` expects, `f`
-/// returns the field unchanged and nothing observable happens.
 fn edit_field(
   model: Model,
   path: List(String),
@@ -241,8 +232,6 @@ fn edit_field(
   }
 }
 
-/// Walk `groups`, find the field at `path` (a top-down list of group/field
-/// names), and replace it with `f(field)`. Structure elsewhere is unchanged.
 fn map_field_at(
   groups: List(Group),
   path: List(String),
@@ -316,8 +305,6 @@ fn apply_recovery_to_fields(fields: List(Field), on: String) -> List(Field) {
         case list.contains(recovery.on, on) {
           True -> {
             let new_value = apply_recovery_kind(value, max, recovery.kind)
-            // Numeric may be over max; still clamp *down* to max on recovery
-            // ("recover to full" = "set to max"). Counter is already <= max.
             Field(
               name:,
               value: Resource(value: new_value, max:, recovery:, kind:),
@@ -338,8 +325,6 @@ fn apply_recovery_kind(current: Int, max: Int, kind: RecoveryKind) -> Int {
   }
 }
 
-// Distinct RecoveryRule.on strings across every Resource in the sheet, in the
-// order they first appear (walking groups depth-first, fields left-to-right).
 fn recovery_triggers(groups: List(Group)) -> List(String) {
   groups
   |> list.fold([], collect_triggers_from_group)
@@ -368,47 +353,6 @@ fn collect_triggers_from_group(
       list.fold(subgroups, acc, collect_triggers_from_group)
   }
 }
-
-// fn move_done_task_to_do(model: Model, id: Int) -> Model {
-//   let Tasks(do:, done:) = model.tasks
-
-//   let assert Ok(task) = done |> dict.get(id)
-//   let do = do |> dict.insert(id, task)
-//   let done = done |> dict.delete(id)
-//   let tasks = Tasks(do:, done:) |> model.save
-
-//   Model(..model, tasks:)
-// }
-
-// fn move_do_task_to_done(model: Model, id: Int) -> Model {
-//   let Tasks(do:, done:) = model.tasks
-
-//   let assert Ok(task) = do |> dict.get(id)
-//   let done = done |> dict.insert(id, task)
-//   let do = do |> dict.delete(id)
-//   let tasks = Tasks(do:, done:) |> model.save
-
-//   Model(..model, tasks:)
-// }
-
-// fn add_task(model: Model) -> Model {
-//   use <- bool.guard(when: model.currently_edited_task == "", return: model)
-
-//   let Tasks(do:, done:) = model.tasks
-
-//   let id =
-//     int.max(
-//       do |> dict.keys |> list.max(int.compare) |> result.unwrap(0),
-//       done |> dict.keys |> list.max(int.compare) |> result.unwrap(0),
-//     )
-//     + 1
-
-//   let task = Task(id:, description: model.currently_edited_task)
-//   let do = do |> dict.insert(id, task)
-//   let tasks = Tasks(do:, done:) |> model.save
-
-//   Model(..model, tasks:, currently_edited_task: "")
-// }
 
 fn view(model: Model) {
   use <- bool.guard(
@@ -482,12 +426,10 @@ fn view_field(
   let Field(name:, value: field_value) = field
   let path = list.append(path_prefix, [name])
   let body = view_field_value(field_value, path)
-  // <label> forwards clicks to its first descendant form control, which breaks
-  // counter Resources (row of checkboxes — you'd always toggle the first one).
+  // <label> forwards clicks to its first descendant form control, which breaks Resource interactions
   let name_span = html.span([attribute.class("field-name")], [html.text(name)])
   case field_value {
-    Resource(kind: Counter, ..) ->
-      div([attribute.class("field")], [name_span, body])
+    Resource(..) -> div([attribute.class("field")], [name_span, body])
     _ -> label([attribute.class("field")], [name_span, body])
   }
 }
@@ -662,46 +604,3 @@ fn view_no_character_selected() {
     ]),
   ])
 }
-// fn view(model: Model) {
-//   let Tasks(do:, done:) = model.tasks
-//   div([], [
-//     section([], [
-//       div([attribute.role("group")], [
-//         input([
-//           attribute.value(model.currently_edited_task),
-//           on_keypress(fn(key) {
-//             case key {
-//               "Enter" -> UserSavedCurrentlyEditedTask
-//               _ -> Nothing
-//             }
-//           }),
-//           event.on_input(UserUpdatedCurrentlyEditedTask),
-//         ]),
-//         input([
-//           on_click(UserSavedCurrentlyEditedTask),
-//           attribute.type_("button"),
-//           attribute.value("Add Task"),
-//         ]),
-//       ]),
-//       ul([], list.map(dict.values(do), do_task_to_li)),
-//     ]),
-//     hr([]),
-//     section([], [
-//       ul([], list.map(dict.values(done), done_task_to_li)),
-//     ]),
-//   ])
-// }
-
-// fn do_task_to_li(task: Task) -> element.Element(Message) {
-//   let Task(id:, description:) = task
-
-//   li([], [html.text(description)])
-// }
-
-// fn done_task_to_li(task: Task) -> element.Element(Message) {
-//   let Task(id:, description:) = task
-
-//   li([], [
-//     html.del([], [html.text(description)]),
-//   ])
-// }
