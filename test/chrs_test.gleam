@@ -1,6 +1,7 @@
 import chrs/sheet.{
-  ByAmount, Checkbox, Field, FieldGroup, Integer, LongText, Modifier, Off, On,
-  RecoveryRule, Resource, Sheet, Special, SuperGroup, Text, ToFull, ToHalfMax,
+  ByAmount, Checkbox, Counter, Field, FieldGroup, Integer, LongText, Modifier,
+  Numeric, Off, On, RecoveryRule, Resource, Sheet, Special, SuperGroup, Text,
+  ToFull, ToHalfMax,
 }
 import gleeunit
 
@@ -48,7 +49,7 @@ pub fn hello_world_test() {
       ]),
 
       FieldGroup("combat", [
-        Field("hp", Resource(10, 10, RecoveryRule("longRest", ToFull))),
+        Field("hp", Resource(10, 10, RecoveryRule("longRest", ToFull), Numeric)),
         Field("ac", Integer(12)),
         Field("initiative", Modifier(2)),
       ]),

@@ -20,7 +20,12 @@ pub type FieldValue {
   Integer(value: Int)
   Modifier(value: Int)
   Checkbox(value: CheckboxValue)
-  Resource(value: Int, max: Int, recovery: RecoveryRule)
+  Resource(value: Int, max: Int, recovery: RecoveryRule, kind: ResourceKind)
+}
+
+pub type ResourceKind {
+  Numeric
+  Counter
 }
 
 pub type CheckboxValue {
@@ -102,13 +107,21 @@ fn field_value_to_json(field_value: FieldValue) -> json.Json {
         #("type", json.string("checkbox")),
         #("value", checkbox_value_to_json(value)),
       ])
-    Resource(value:, max:, recovery:) ->
+    Resource(value:, max:, recovery:, kind:) ->
       json.object([
         #("type", json.string("resource")),
         #("value", json.int(value)),
         #("max", json.int(max)),
+        #("kind", resource_kind_to_json(kind)),
         #("recovery", recovery_rule_to_json(recovery)),
       ])
+  }
+}
+
+fn resource_kind_to_json(resource_kind: ResourceKind) -> json.Json {
+  case resource_kind {
+    Numeric -> json.string("numeric")
+    Counter -> json.string("counter")
   }
 }
 
@@ -200,9 +213,19 @@ fn field_value_decoder() -> decode.Decoder(FieldValue) {
       use value <- decode.field("value", decode.int)
       use max <- decode.field("max", decode.int)
       use recovery <- decode.field("recovery", recovery_rule_decoder())
-      decode.success(Resource(value:, max:, recovery:))
+      use kind <- decode.field("kind", resource_kind_decoder())
+      decode.success(Resource(value:, max:, recovery:, kind:))
     }
     _ -> decode.failure(Text(value: ""), "FieldValue")
+  }
+}
+
+fn resource_kind_decoder() -> decode.Decoder(ResourceKind) {
+  use variant <- decode.then(decode.string)
+  case variant {
+    "numeric" -> decode.success(Numeric)
+    "counter" -> decode.success(Counter)
+    _ -> decode.failure(Numeric, "ResourceKind")
   }
 }
 

@@ -99,7 +99,8 @@
             "type": "resource",
             "value": 10,
             "max": 10,
-            "recovery": { "on": "longRest", "kind": { "type": "to_full" } }
+            "recovery": { "on": "longRest", "kind": { "type": "to_full" } },
+            "kind": "numeric"
           }
         },
         { "name": "ac", "value": { "type": "integer", "value": 12 } },

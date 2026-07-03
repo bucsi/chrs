@@ -282,7 +282,7 @@ fn view_field_value(field_value: FieldValue) -> element.Element(Message) {
             html.small([], [html.text(" (special)")]),
           ])
       }
-    Resource(value: v, max:, recovery: _) ->
+    Resource(value: v, max:, recovery: _, kind: _) ->
       input([
         type_("text"),
         readonly(True),
