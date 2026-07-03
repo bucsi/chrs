@@ -24,9 +24,9 @@ import lustre/element/html.{
 import lustre/event.{on_click, on_keypress}
 
 import chrs/sheet.{
-  type Field, type FieldValue, type Group, type Sheet, Checkbox, Field,
-  FieldGroup, Integer, LongText, Modifier, Off, On, Resource, Sheet, Special,
-  SuperGroup, Text,
+  type Field, type FieldValue, type Group, type Sheet, Checkbox, Counter, Field,
+  FieldGroup, Integer, LongText, Modifier, Numeric, Off, On, Resource, Sheet,
+  Special, SuperGroup, Text,
 }
 
 const key_prefix = "net.bucsi.chrs.characters."
@@ -38,6 +38,7 @@ pub type Message {
   //   UserSavedCurrentlyEditedTask
   UserEditedRawJson(raw: String)
   UserSubmittedRawJson
+  UserSetResourceValue(path: List(String), value: Int)
   Nothing
 }
 
@@ -129,10 +130,70 @@ fn update(model: Model, msg: Message) -> Model {
         Model(save:, id:, draft_json:, ..) ->
           case json.parse(draft_json, sheet.decoder()) {
             Ok(new_sheet) ->
-              Model(..model, sheet: model.save(new_sheet, id), parse_error: "")
+              Model(..model, sheet: save(new_sheet, id), parse_error: "")
             Error(err) -> Model(..model, parse_error: string.inspect(err))
           }
       }
+    UserSetResourceValue(path:, value: new_value) ->
+      case model {
+        NoCharacterSelected -> model
+        Model(sheet:, id:, save:, ..) -> {
+          let new_sheet =
+            Sheet(..sheet, groups: set_resource(sheet.groups, path, new_value))
+          Model(..model, sheet: save(new_sheet, id))
+        }
+      }
+  }
+}
+
+fn set_resource(
+  groups: List(Group),
+  path: List(String),
+  new_value: Int,
+) -> List(Group) {
+  case path {
+    [head, ..rest] ->
+      list.map(groups, fn(group) {
+        case group {
+          FieldGroup(name:, fields:) if name == head ->
+            FieldGroup(
+              name:,
+              fields: set_resource_in_fields(fields, rest, new_value),
+            )
+          SuperGroup(name:, groups: subgroups) if name == head ->
+            SuperGroup(name:, groups: set_resource(subgroups, rest, new_value))
+          _ -> group
+        }
+      })
+    [] -> groups
+  }
+}
+
+fn set_resource_in_fields(
+  fields: List(Field),
+  path: List(String),
+  new_value: Int,
+) -> List(Field) {
+  case path {
+    [field_name] ->
+      list.map(fields, fn(field) {
+        case field {
+          Field(name:, value: Resource(max:, recovery:, kind:, ..))
+            if name == field_name
+          -> {
+            let clamped = case kind {
+              Numeric -> int.max(new_value, 0)
+              Counter -> int.clamp(new_value, min: 0, max: max)
+            }
+            Field(
+              name:,
+              value: Resource(value: clamped, max:, recovery:, kind:),
+            )
+          }
+          _ -> field
+        }
+      })
+    _ -> fields
   }
 }
 
@@ -186,7 +247,7 @@ fn view(model: Model) {
   let assert Model(..) = model
 
   div([], [
-    div([], list.map(model.sheet.groups, view_group)),
+    div([], list.map(model.sheet.groups, view_group(_, []))),
     html.details([], [
       html.summary([], [html.text("raw json")]),
       textarea([event.on_input(UserEditedRawJson)], model.draft_json),
@@ -201,27 +262,47 @@ fn view(model: Model) {
   ])
 }
 
-fn view_group(group: Group) -> element.Element(Message) {
+fn view_group(
+  group: Group,
+  path_prefix: List(String),
+) -> element.Element(Message) {
   case group {
-    FieldGroup(name:, fields:) ->
+    FieldGroup(name:, fields:) -> {
+      let path = list.append(path_prefix, [name])
       fieldset([], [
         legend([], [html.text(name)]),
-        ..list.map(fields, view_field)
+        ..list.map(fields, view_field(_, path))
       ])
-    SuperGroup(name:, groups:) ->
+    }
+    SuperGroup(name:, groups:) -> {
+      let path = list.append(path_prefix, [name])
       fieldset([], [
         legend([], [html.text(name)]),
-        ..list.map(groups, view_group)
+        ..list.map(groups, view_group(_, path))
       ])
+    }
   }
 }
 
-fn view_field(field: Field) -> element.Element(Message) {
+fn view_field(
+  field: Field,
+  path_prefix: List(String),
+) -> element.Element(Message) {
   let Field(name:, value: field_value) = field
-  label([], [html.text(name), view_field_value(field_value)])
+  let path = list.append(path_prefix, [name])
+  let body = view_field_value(field_value, path)
+  // <label> forwards clicks to its first descendant form control, which breaks
+  // counter Resources (row of checkboxes — you'd always toggle the first one).
+  case field_value {
+    Resource(kind: Counter, ..) -> div([], [html.text(name), body])
+    _ -> label([], [html.text(name), body])
+  }
 }
 
-fn view_field_value(field_value: FieldValue) -> element.Element(Message) {
+fn view_field_value(
+  field_value: FieldValue,
+  path: List(String),
+) -> element.Element(Message) {
   case field_value {
     Text(value:) ->
       input([type_("text"), readonly(True), attribute.value(value)])
@@ -282,13 +363,68 @@ fn view_field_value(field_value: FieldValue) -> element.Element(Message) {
             html.small([], [html.text(" (special)")]),
           ])
       }
-    Resource(value: v, max:, recovery: _, kind: _) ->
-      input([
-        type_("text"),
-        readonly(True),
-        value(int.to_string(v) <> " / " <> int.to_string(max)),
-      ])
+    Resource(value: v, max:, recovery: _, kind:) ->
+      case kind {
+        Numeric -> view_numeric_resource(path, v, max)
+        Counter -> view_counter_resource(path, v, max)
+      }
   }
+}
+
+fn view_numeric_resource(
+  path: List(String),
+  current: Int,
+  max: Int,
+) -> element.Element(Message) {
+  let parse_change = fn(str: String) -> Message {
+    case int.parse(str) {
+      Ok(n) -> UserSetResourceValue(path:, value: n)
+      Error(_) -> Nothing
+    }
+  }
+  div([attribute.role("group")], [
+    html.button(
+      [event.on_click(UserSetResourceValue(path:, value: current - 1))],
+      [
+        html.text("-"),
+      ],
+    ),
+    input([
+      type_("number"),
+      value(int.to_string(current)),
+      attribute.classes([#("over", current > max)]),
+      event.on_change(parse_change),
+    ]),
+    html.button(
+      [event.on_click(UserSetResourceValue(path:, value: current + 1))],
+      [
+        html.text("+"),
+      ],
+    ),
+    html.span([], [html.text(" / " <> int.to_string(max))]),
+  ])
+}
+
+fn view_counter_resource(
+  path: List(String),
+  current: Int,
+  max: Int,
+) -> element.Element(Message) {
+  let pips =
+    int.range(from: max, to: 0, with: [], run: list.prepend)
+    |> list.map(fn(i) {
+      let is_filled = i <= current
+      let target = case is_filled {
+        True -> i - 1
+        False -> i
+      }
+      input([
+        type_("checkbox"),
+        checked(is_filled),
+        event.on_click(UserSetResourceValue(path:, value: target)),
+      ])
+    })
+  div([attribute.role("group")], pips)
 }
 
 fn view_no_character_selected() {
