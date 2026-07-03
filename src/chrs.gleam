@@ -103,9 +103,13 @@ fn do_init(local_id: String) -> Model {
 
   let sheet = case typed_storage |> varasto.get(key_prefix <> local_id) {
     Ok(value) -> value
-    Error(_) -> {
+    Error(varasto.NotFound) -> {
       console.debug("No saved sheet found, starting fresh.")
       save(Sheet(local_id, []), local_id)
+    }
+    Error(err) -> {
+      console.error("varasto.get failed: " <> string.inspect(err))
+      panic as "varasto.get failed"
     }
   }
 
@@ -256,7 +260,10 @@ fn recovery_triggers(groups: List(Group)) -> List(String) {
   |> list.reverse
 }
 
-fn collect_triggers_from_group(acc: List(String), group: Group) -> List(String) {
+fn collect_triggers_from_group(
+  acc: List(String),
+  group: Group,
+) -> List(String) {
   case group {
     FieldGroup(fields:, ..) ->
       list.fold(fields, acc, fn(acc, field) {
