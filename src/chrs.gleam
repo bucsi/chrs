@@ -334,8 +334,11 @@ fn view(model: Model) {
 
   div([], [
     view_recovery_bar(recovery_triggers(model.sheet.groups)),
-    div([], list.map(model.sheet.groups, view_group(_, []))),
-    html.details([], [
+    div(
+      [attribute.class("groups")],
+      list.map(model.sheet.groups, view_group(_, [])),
+    ),
+    html.details([attribute.class("raw-json")], [
       html.summary([], [html.text("raw json")]),
       textarea([event.on_input(UserEditedRawJson)], model.draft_json),
       case model.parse_error {
@@ -354,7 +357,7 @@ fn view_recovery_bar(triggers: List(String)) -> element.Element(Message) {
     [] -> element.none()
     _ ->
       div(
-        [attribute.role("group")],
+        [attribute.class("recovery-bar"), attribute.role("group")],
         list.map(triggers, fn(on) {
           html.button([event.on_click(UserTriggeredRecovery(on:))], [
             html.text(on),
@@ -395,9 +398,11 @@ fn view_field(
   let body = view_field_value(field_value, path)
   // <label> forwards clicks to its first descendant form control, which breaks
   // counter Resources (row of checkboxes — you'd always toggle the first one).
+  let name_span = html.span([attribute.class("field-name")], [html.text(name)])
   case field_value {
-    Resource(kind: Counter, ..) -> div([], [html.text(name), body])
-    _ -> label([], [html.text(name), body])
+    Resource(kind: Counter, ..) ->
+      div([attribute.class("field")], [name_span, body])
+    _ -> label([attribute.class("field")], [name_span, body])
   }
 }
 
@@ -407,14 +412,14 @@ fn view_field_value(
 ) -> element.Element(Message) {
   case field_value {
     Text(value:) ->
-      input([type_("text"), readonly(True), attribute.value(value)])
+      html.span([attribute.class("value text")], [html.text(value)])
     LongText(value:, excerpt:, reference:) -> {
       let txtarea = case value {
         "" -> element.none()
         _ -> textarea([readonly(True)], value)
       }
-      let excerpt_input =
-        input([type_("text"), readonly(True), attribute.value(excerpt)])
+      let excerpt_span =
+        html.span([attribute.class("value text")], [html.text(excerpt)])
       let reference_link = case reference {
         "" -> element.none()
         _ ->
@@ -431,17 +436,19 @@ fn view_field_value(
             reference_link,
           ])
       }
-      div([], [excerpt_input, details])
+      div([], [excerpt_span, details])
     }
 
     Integer(value: v) ->
-      input([type_("number"), readonly(True), value(int.to_string(v))])
+      html.span([attribute.class("value number")], [
+        html.text(int.to_string(v)),
+      ])
     Modifier(value: v) -> {
       let formatted = case v >= 0 {
         True -> "+" <> int.to_string(v)
         False -> int.to_string(v)
       }
-      input([type_("text"), readonly(True), value(formatted)])
+      html.span([attribute.class("value number")], [html.text(formatted)])
     }
     Checkbox(value: cb) ->
       case cb {
@@ -484,7 +491,7 @@ fn view_numeric_resource(
       Error(_) -> Nothing
     }
   }
-  div([attribute.role("group")], [
+  div([attribute.class("resource numeric"), attribute.role("group")], [
     html.button(
       [event.on_click(UserSetResourceValue(path:, value: current - 1))],
       [
@@ -526,7 +533,7 @@ fn view_counter_resource(
         event.on_click(UserSetResourceValue(path:, value: target)),
       ])
     })
-  div([attribute.role("group")], pips)
+  div([attribute.class("resource counter"), attribute.role("group")], pips)
 }
 
 fn view_no_character_selected() {
