@@ -52,18 +52,24 @@ pub fn main() {
   let app = lustre.simple(init, update, view)
   let assert Ok(_) = lustre.start(app, "#app", Nil)
 
+  window.add_event_listener("hashchange", fn(_event) {
+    window.self()
+    |> window.location()
+    |> location.reload()
+  })
+
   Nil
 }
 
 fn init(_flags: a) -> Model {
-  let pathname =
+  let hash =
     window.self()
     |> window.location()
-    |> location.pathname()
+    |> location.hash()
 
-  console.debug("pathname: " <> pathname)
-  case pathname {
-    "/" <> str if str != "" -> do_init(str)
+  console.debug("hash: " <> hash |> result.unwrap("error"))
+  case hash {
+    Ok(str) if str != "" -> do_init(str)
     _ -> NoCharacterSelected
   }
 }
@@ -245,7 +251,7 @@ fn view_no_character_selected() {
       html.text(
         "No character selected. Please select a character, or create a new one with id: ",
       ),
-      html.a([attribute.href("/" <> id)], [html.text(id)]),
+      html.a([attribute.href("/#" <> id)], [html.text(id)]),
     ]),
   ])
 }
