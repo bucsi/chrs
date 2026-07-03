@@ -41,6 +41,13 @@ pub type Message {
   UserSubmittedRawJson
   UserSetResourceValue(path: List(String), value: Int)
   UserTriggeredRecovery(on: String)
+  UserSetText(path: List(String), value: String)
+  UserSetInteger(path: List(String), value: Int)
+  UserSetModifier(path: List(String), value: Int)
+  UserToggledCheckbox(path: List(String))
+  UserSetLongTextValue(path: List(String), value: String)
+  UserSetLongTextExcerpt(path: List(String), value: String)
+  UserSetLongTextReference(path: List(String), value: String)
   Nothing
 }
 
@@ -158,6 +165,125 @@ fn update(model: Model, msg: Message) -> Model {
           Model(..model, sheet: save(new_sheet, id))
         }
       }
+    UserSetText(path:, value: new) ->
+      edit_field(model, path, fn(field) {
+        case field.value {
+          Text(_) -> Field(..field, value: Text(value: new))
+          _ -> field
+        }
+      })
+    UserSetInteger(path:, value: new) ->
+      edit_field(model, path, fn(field) {
+        case field.value {
+          Integer(_) -> Field(..field, value: Integer(value: new))
+          _ -> field
+        }
+      })
+    UserSetModifier(path:, value: new) ->
+      edit_field(model, path, fn(field) {
+        case field.value {
+          Modifier(_) -> Field(..field, value: Modifier(value: new))
+          _ -> field
+        }
+      })
+    UserToggledCheckbox(path:) ->
+      edit_field(model, path, fn(field) {
+        case field.value {
+          Checkbox(value: Off) -> Field(..field, value: Checkbox(value: On))
+          Checkbox(value: On) -> Field(..field, value: Checkbox(value: Off))
+          // Special is read-only per design; ignore.
+          _ -> field
+        }
+      })
+    UserSetLongTextValue(path:, value: new) ->
+      edit_field(model, path, fn(field) {
+        case field.value {
+          LongText(excerpt:, reference:, ..) ->
+            Field(
+              ..field,
+              value: LongText(value: new, excerpt:, reference:),
+            )
+          _ -> field
+        }
+      })
+    UserSetLongTextExcerpt(path:, value: new) ->
+      edit_field(model, path, fn(field) {
+        case field.value {
+          LongText(value:, reference:, ..) ->
+            Field(
+              ..field,
+              value: LongText(value:, excerpt: new, reference:),
+            )
+          _ -> field
+        }
+      })
+    UserSetLongTextReference(path:, value: new) ->
+      edit_field(model, path, fn(field) {
+        case field.value {
+          LongText(value:, excerpt:, ..) ->
+            Field(
+              ..field,
+              value: LongText(value:, excerpt:, reference: new),
+            )
+          _ -> field
+        }
+      })
+  }
+}
+
+/// Apply a field-level edit at `path` and persist. If the path doesn't
+/// resolve or the field's variant doesn't match what `f` expects, `f`
+/// returns the field unchanged and nothing observable happens.
+fn edit_field(
+  model: Model,
+  path: List(String),
+  f: fn(Field) -> Field,
+) -> Model {
+  case model {
+    NoCharacterSelected -> model
+    Model(sheet:, id:, save:, ..) -> {
+      let new_sheet = Sheet(..sheet, groups: map_field_at(sheet.groups, path, f))
+      Model(..model, sheet: save(new_sheet, id))
+    }
+  }
+}
+
+/// Walk `groups`, find the field at `path` (a top-down list of group/field
+/// names), and replace it with `f(field)`. Structure elsewhere is unchanged.
+fn map_field_at(
+  groups: List(Group),
+  path: List(String),
+  f: fn(Field) -> Field,
+) -> List(Group) {
+  case path {
+    [head, ..rest] ->
+      list.map(groups, fn(group) {
+        case group {
+          FieldGroup(name:, fields:) if name == head ->
+            FieldGroup(name:, fields: map_field_in_fields(fields, rest, f))
+          SuperGroup(name:, groups: subgroups) if name == head ->
+            SuperGroup(name:, groups: map_field_at(subgroups, rest, f))
+          _ -> group
+        }
+      })
+    [] -> groups
+  }
+}
+
+fn map_field_in_fields(
+  fields: List(Field),
+  path: List(String),
+  f: fn(Field) -> Field,
+) -> List(Field) {
+  case path {
+    [field_name] ->
+      list.map(fields, fn(field) {
+        case field.name == field_name {
+          True -> f(field)
+          False -> field
+        }
+      })
+    _ -> fields
   }
 }
 
@@ -166,49 +292,16 @@ fn set_resource(
   path: List(String),
   new_value: Int,
 ) -> List(Group) {
-  case path {
-    [head, ..rest] ->
-      list.map(groups, fn(group) {
-        case group {
-          FieldGroup(name:, fields:) if name == head ->
-            FieldGroup(
-              name:,
-              fields: set_resource_in_fields(fields, rest, new_value),
-            )
-          SuperGroup(name:, groups: subgroups) if name == head ->
-            SuperGroup(name:, groups: set_resource(subgroups, rest, new_value))
-          _ -> group
-        }
-      })
-    [] -> groups
-  }
-}
-
-fn set_resource_in_fields(
-  fields: List(Field),
-  path: List(String),
-  new_value: Int,
-) -> List(Field) {
-  case path {
-    [field_name] ->
-      list.map(fields, fn(field) {
-        case field {
-          Field(name:, value: Resource(max:, recovery:, kind:, ..))
-            if name == field_name
-          -> {
-            let clamped = case kind {
-              Numeric -> int.max(new_value, 0)
-              Counter -> int.clamp(new_value, min: 0, max: max)
-            }
-            Field(
-              name:,
-              value: Resource(value: clamped, max:, recovery:, kind:),
-            )
-          }
-          _ -> field
-        }
-      })
-    _ -> fields
+  use field <- map_field_at(groups, path)
+  case field {
+    Field(name:, value: Resource(max:, recovery:, kind:, ..)) -> {
+      let clamped = case kind {
+        Numeric -> int.max(new_value, 0)
+        Counter -> int.clamp(new_value, min: 0, max: max)
+      }
+      Field(name:, value: Resource(value: clamped, max:, recovery:, kind:))
+    }
+    _ -> field
   }
 }
 
@@ -411,15 +504,31 @@ fn view_field_value(
   path: List(String),
 ) -> element.Element(Message) {
   case field_value {
-    Text(value:) ->
-      html.span([attribute.class("value text")], [html.text(value)])
+    Text(value: v) ->
+      input([
+        type_("text"),
+        attribute.value(v),
+        event.on_change(UserSetText(path:, value: _)),
+      ])
     LongText(value:, excerpt:, reference:) -> {
-      let txtarea = case value {
-        "" -> element.none()
-        _ -> textarea([readonly(True)], value)
-      }
-      let excerpt_span =
-        html.span([attribute.class("value text")], [html.text(excerpt)])
+      let excerpt_input =
+        input([
+          type_("text"),
+          attribute.value(excerpt),
+          event.on_change(UserSetLongTextExcerpt(path:, value: _)),
+        ])
+      let value_textarea =
+        textarea(
+          [event.on_change(UserSetLongTextValue(path:, value: _))],
+          value,
+        )
+      let reference_input =
+        input([
+          type_("text"),
+          attribute.placeholder("reference url"),
+          attribute.value(reference),
+          event.on_change(UserSetLongTextReference(path:, value: _)),
+        ])
       let reference_link = case reference {
         "" -> element.none()
         _ ->
@@ -427,39 +536,50 @@ fn view_field_value(
             html.text("ref"),
           ])
       }
-      let details = case value, reference {
-        "", "" -> element.none()
-        _, _ ->
-          html.details([], [
-            html.summary([], [html.text("details")]),
-            txtarea,
-            reference_link,
-          ])
-      }
-      div([], [excerpt_span, details])
+      div([], [
+        excerpt_input,
+        html.details([], [
+          html.summary([], [html.text("details")]),
+          value_textarea,
+          div([], [reference_input, reference_link]),
+        ]),
+      ])
     }
 
     Integer(value: v) ->
-      html.span([attribute.class("value number")], [
-        html.text(int.to_string(v)),
+      input([
+        type_("number"),
+        attribute.value(int.to_string(v)),
+        event.on_change(fn(str) {
+          case int.parse(str) {
+            Ok(n) -> UserSetInteger(path:, value: n)
+            Error(_) -> Nothing
+          }
+        }),
       ])
-    Modifier(value: v) -> {
-      let formatted = case v >= 0 {
-        True -> "+" <> int.to_string(v)
-        False -> int.to_string(v)
-      }
-      html.span([attribute.class("value number")], [html.text(formatted)])
-    }
+    Modifier(value: v) ->
+      input([
+        type_("number"),
+        attribute.value(int.to_string(v)),
+        event.on_change(fn(str) {
+          case int.parse(str) {
+            Ok(n) -> UserSetModifier(path:, value: n)
+            Error(_) -> Nothing
+          }
+        }),
+      ])
     Checkbox(value: cb) ->
       case cb {
         Off ->
-          input([type_("checkbox"), readonly(True), attribute.disabled(True)])
+          input([
+            type_("checkbox"),
+            event.on_click(UserToggledCheckbox(path:)),
+          ])
         On ->
           input([
             type_("checkbox"),
             checked(True),
-            readonly(True),
-            attribute.disabled(True),
+            event.on_click(UserToggledCheckbox(path:)),
           ])
         Special ->
           div([], [
