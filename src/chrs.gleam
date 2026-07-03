@@ -16,12 +16,18 @@ import plinth/javascript/storage
 import varasto
 
 import lustre
-import lustre/attribute.{readonly, type_, value}
+import lustre/attribute.{checked, readonly, type_, value}
 import lustre/element
-import lustre/element/html.{div, hr, input, li, section, textarea, ul}
+import lustre/element/html.{
+  div, fieldset, hr, input, label, legend, li, section, textarea, ul,
+}
 import lustre/event.{on_click, on_keypress}
 
-import chrs/sheet.{type Sheet, Sheet}
+import chrs/sheet.{
+  type Field, type FieldValue, type Group, type Sheet, Checkbox, Field,
+  FieldGroup, Integer, LongText, Modifier, Off, On, Resource, Sheet, Special,
+  SuperGroup, Text,
+}
 
 const key_prefix = "net.bucsi.chrs.characters."
 
@@ -145,15 +151,89 @@ fn view(model: Model) {
   let assert Model(_, _, _) = model
 
   div([], [
-    section([], [
-      textarea(
-        [
-          readonly(True),
-        ],
-        model.sheet |> sheet.to_json |> json.to_string,
-      ),
-    ]),
+    div([], list.map(model.sheet.groups, view_group)),
   ])
+}
+
+fn view_group(group: Group) -> element.Element(Message) {
+  case group {
+    FieldGroup(name:, fields:) ->
+      fieldset([], [
+        legend([], [html.text(name)]),
+        ..list.map(fields, view_field)
+      ])
+    SuperGroup(name:, groups:) ->
+      fieldset([], [
+        legend([], [html.text(name)]),
+        ..list.map(groups, view_group)
+      ])
+  }
+}
+
+fn view_field(field: Field) -> element.Element(Message) {
+  let Field(name:, value: field_value) = field
+  label([], [html.text(name), view_field_value(field_value)])
+}
+
+fn view_field_value(field_value: FieldValue) -> element.Element(Message) {
+  case field_value {
+    Text(value:) ->
+      input([type_("text"), readonly(True), attribute.value(value)])
+    LongText(value:, excerpt:, reference:) -> {
+      let txtarea = case value {
+        "" -> element.none()
+        other -> textarea([readonly(True)], value)
+      }
+      let excerpt =
+        input([type_("text"), readonly(True), attribute.value(excerpt)])
+      let reference = case reference {
+        "" -> element.none()
+        _ ->
+          html.a([attribute.href(reference), attribute.target("_blank")], [
+            html.text("ref"),
+          ])
+      }
+      div([], [excerpt, txtarea, reference])
+    }
+
+    Integer(value: v) ->
+      input([type_("number"), readonly(True), value(int.to_string(v))])
+    Modifier(value: v) -> {
+      let formatted = case v >= 0 {
+        True -> "+" <> int.to_string(v)
+        False -> int.to_string(v)
+      }
+      input([type_("text"), readonly(True), value(formatted)])
+    }
+    Checkbox(value: cb) ->
+      case cb {
+        Off ->
+          input([type_("checkbox"), readonly(True), attribute.disabled(True)])
+        On ->
+          input([
+            type_("checkbox"),
+            checked(True),
+            readonly(True),
+            attribute.disabled(True),
+          ])
+        Special ->
+          div([], [
+            input([
+              type_("checkbox"),
+              checked(True),
+              readonly(True),
+              attribute.disabled(True),
+            ]),
+            html.small([], [html.text(" (special)")]),
+          ])
+      }
+    Resource(value: v, max:, recovery: _) ->
+      input([
+        type_("text"),
+        readonly(True),
+        value(int.to_string(v) <> " / " <> int.to_string(max)),
+      ])
+  }
 }
 
 fn view_no_character_selected() {
