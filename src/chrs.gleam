@@ -1,10 +1,7 @@
 import gleam/bool
-import gleam/dict
-import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/list
-import gleam/option
 import gleam/result
 import gleam/string
 
@@ -47,6 +44,7 @@ pub type Message {
   UserSetLongTextValue(path: List(String), value: String)
   UserSetLongTextExcerpt(path: List(String), value: String)
   UserSetLongTextReference(path: List(String), value: String)
+  UserConfirmedPendingAction
   Nothing
 }
 
@@ -57,6 +55,7 @@ pub type Model {
     id: String,
     draft_json: String,
     parse_error: String,
+    action_to_confirm: String,
   )
   NoCharacterSelected
 }
@@ -121,20 +120,22 @@ fn do_init(local_id: String) -> Model {
     id: local_id,
     draft_json: sheet |> sheet.to_json |> json.to_string,
     parse_error: "",
+    action_to_confirm: "",
   )
 }
 
 fn update(model: Model, msg: Message) -> Model {
+  use <- bool.guard(when: model == NoCharacterSelected, return: model)
+  let assert Model(..) = model
+
   case msg {
     Nothing -> model
     UserEditedRawJson(raw:) ->
       case model {
-        NoCharacterSelected -> model
         Model(..) -> Model(..model, draft_json: raw)
       }
     UserSubmittedRawJson ->
       case model {
-        NoCharacterSelected -> model
         Model(save:, id:, draft_json:, ..) ->
           case json.parse(draft_json, sheet.decoder()) {
             Ok(new_sheet) ->
@@ -144,22 +145,13 @@ fn update(model: Model, msg: Message) -> Model {
       }
     UserSetResourceValue(path:, value: new_value) ->
       case model {
-        NoCharacterSelected -> model
         Model(sheet:, id:, save:, ..) -> {
           let new_sheet =
             Sheet(..sheet, groups: set_resource(sheet.groups, path, new_value))
           Model(..model, sheet: save(new_sheet, id))
         }
       }
-    UserTriggeredRecovery(on:) ->
-      case model {
-        NoCharacterSelected -> model
-        Model(sheet:, id:, save:, ..) -> {
-          let new_sheet =
-            Sheet(..sheet, groups: apply_recovery(sheet.groups, on))
-          Model(..model, sheet: save(new_sheet, id))
-        }
-      }
+    UserTriggeredRecovery(on:) -> Model(..model, action_to_confirm: on)
     UserSetText(path:, value: new) ->
       edit_field(model, path, fn(field) {
         case field.value {
@@ -214,6 +206,15 @@ fn update(model: Model, msg: Message) -> Model {
           _ -> field
         }
       })
+    UserConfirmedPendingAction -> {
+      let Model(id:, sheet:, save:, ..) = model
+      let new_sheet =
+        Sheet(
+          ..sheet,
+          groups: apply_recovery(sheet.groups, model.action_to_confirm),
+        )
+      Model(..model, sheet: save(new_sheet, id), action_to_confirm: "")
+    }
   }
 }
 
@@ -359,11 +360,10 @@ fn view(model: Model) {
     when: model == NoCharacterSelected,
     return: view_no_character_selected(),
   )
-
   let assert Model(..) = model
 
   main_([], [
-    view_recovery_bar(recovery_triggers(model.sheet.groups)),
+    view_recovery_bar(model),
     div(
       [attribute.class("groups")],
       list.map(model.sheet.groups, view_group(_, [])),
@@ -382,19 +382,33 @@ fn view(model: Model) {
   ])
 }
 
-fn view_recovery_bar(triggers: List(String)) -> element.Element(Message) {
-  case triggers {
-    [] -> element.none()
-    _ ->
-      div(
-        [attribute.class("recovery-bar"), attribute.role("group")],
-        list.map(triggers, fn(on) {
-          html.button([event.on_click(UserTriggeredRecovery(on:))], [
-            html.text(on),
-          ])
-        }),
-      )
+fn view_recovery_bar(model: Model) -> element.Element(Message) {
+  let assert Model(..) = model
+    as "view_recovery_bar should be only called when we have a character sheet selected"
+
+  let triggers = recovery_triggers(model.sheet.groups)
+  use <- bool.guard(when: triggers == [], return: element.none())
+
+  let buttons = case model.action_to_confirm {
+    "" -> [element.none()]
+    _ -> [
+      html.button([event.on_click(UserConfirmedPendingAction)], [
+        html.text("Confirm: "),
+        html.code([], [html.text(model.action_to_confirm)]),
+        html.text("?"),
+      ]),
+    ]
   }
+
+  div(
+    [attribute.class("recovery-bar"), attribute.role("group")],
+    list.fold(triggers, buttons, fn(acc, on) {
+      html.button([event.on_click(UserTriggeredRecovery(on:))], [
+        html.text(on),
+      ])
+      |> list.prepend(acc, _)
+    }),
+  )
 }
 
 fn view_group(
