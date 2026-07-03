@@ -188,18 +188,27 @@ fn view_field_value(field_value: FieldValue) -> element.Element(Message) {
     LongText(value:, excerpt:, reference:) -> {
       let txtarea = case value {
         "" -> element.none()
-        other -> textarea([readonly(True)], value)
+        _ -> textarea([readonly(True)], value)
       }
-      let excerpt =
+      let excerpt_input =
         input([type_("text"), readonly(True), attribute.value(excerpt)])
-      let reference = case reference {
+      let reference_link = case reference {
         "" -> element.none()
         _ ->
           html.a([attribute.href(reference), attribute.target("_blank")], [
             html.text("ref"),
           ])
       }
-      div([], [excerpt, txtarea, reference])
+      let details = case value, reference {
+        "", "" -> element.none()
+        _, _ ->
+          html.details([], [
+            html.summary([], [html.text("details")]),
+            txtarea,
+            reference_link,
+          ])
+      }
+      div([], [excerpt_input, details])
     }
 
     Integer(value: v) ->
