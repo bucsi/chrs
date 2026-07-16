@@ -16,16 +16,14 @@ import lustre
 import lustre/attribute.{checked, readonly, type_, value}
 import lustre/element
 import lustre/element/html.{
-  div, fieldset, hr, input, label, legend, li, main as main_, section, textarea,
-  ul,
+  div, fieldset, input, label, legend, main as main_, section, textarea,
 }
-import lustre/event.{on_click, on_keypress}
+import lustre/event
 
 import chrs/sheet.{
-  type Field, type FieldValue, type Group, type RecoveryKind, type Sheet,
-  ByAmount, Checkbox, Counter, Field, FieldGroup, Integer, LongText, Modifier,
-  Numeric, Off, On, Resource, Sheet, Special, SuperGroup, Text, ToFull,
-  ToHalfMax,
+  type Element, type FieldValue, type RecoveryKind, type Sheet, ByAmount,
+  Checkbox, Counter, Group, Integer, LongText, Modifier, Numeric, Off, On,
+  Resource, Sheet, Special, Text, ToFull, ToHalfMax, ToZero, Value,
 }
 
 const key_prefix = "net.bucsi.chrs.characters."
@@ -36,14 +34,14 @@ pub type Message {
   UserEditedRawJson(raw: String)
   UserSubmittedRawJson
   UserSetResourceValue(path: List(String), value: Int)
-  UserTriggeredRecovery(on: String)
+  UserTriggeredRecovery(trigger: String)
   UserSetText(path: List(String), value: String)
   UserSetInteger(path: List(String), value: Int)
   UserSetModifier(path: List(String), value: Int)
   UserToggledCheckbox(path: List(String))
   UserSetLongTextValue(path: List(String), value: String)
-  UserSetLongTextExcerpt(path: List(String), value: String)
-  UserSetLongTextReference(path: List(String), value: String)
+  UserSetLongTextExcerpt(path: List(String), excerpt: String)
+  UserSetLongTextReference(path: List(String), reference: String)
   UserConfirmedPendingAction
   Nothing
 }
@@ -130,192 +128,221 @@ fn update(model: Model, msg: Message) -> Model {
 
   case msg {
     Nothing -> model
-    UserEditedRawJson(raw:) ->
-      case model {
-        Model(..) -> Model(..model, draft_json: raw)
-      }
+    UserEditedRawJson(raw:) -> Model(..model, draft_json: raw)
     UserSubmittedRawJson ->
-      case model {
-        Model(save:, id:, draft_json:, ..) ->
-          case json.parse(draft_json, sheet.decoder()) {
-            Ok(new_sheet) ->
-              Model(..model, sheet: save(new_sheet, id), parse_error: "")
-            Error(err) -> Model(..model, parse_error: string.inspect(err))
-          }
+      case json.parse(model.draft_json, sheet.decoder()) {
+        Ok(new_sheet) -> {
+          let Model(save:, id:, ..) = model
+          Model(..model, sheet: save(new_sheet, id), parse_error: "")
+        }
+        Error(err) -> Model(..model, parse_error: string.inspect(err))
       }
-    UserSetResourceValue(path:, value: new_value) ->
-      case model {
-        Model(sheet:, id:, save:, ..) -> {
-          let new_sheet =
-            Sheet(..sheet, groups: set_resource(sheet.groups, path, new_value))
-          Model(..model, sheet: save(new_sheet, id))
-        }
-      }
-    UserTriggeredRecovery(on:) -> Model(..model, action_to_confirm: on)
-    UserSetText(path:, value: new) ->
-      edit_field(model, path, fn(field) {
-        case field.value {
-          Text(_) -> Field(..field, value: Text(value: new))
-          _ -> field
-        }
-      })
-    UserSetInteger(path:, value: new) ->
-      edit_field(model, path, fn(field) {
-        case field.value {
-          Integer(_) -> Field(..field, value: Integer(value: new))
-          _ -> field
-        }
-      })
-    UserSetModifier(path:, value: new) ->
-      edit_field(model, path, fn(field) {
-        case field.value {
-          Modifier(_) -> Field(..field, value: Modifier(value: new))
-          _ -> field
-        }
-      })
-    UserToggledCheckbox(path:) ->
-      edit_field(model, path, fn(field) {
-        case field.value {
-          Checkbox(value: Off) -> Field(..field, value: Checkbox(value: On))
-          Checkbox(value: On) -> Field(..field, value: Checkbox(value: Off))
-          Checkbox(value: Special) -> field
-          _ -> panic as "unreachable"
-        }
-      })
-    UserSetLongTextValue(path:, value: new) ->
-      edit_field(model, path, fn(field) {
-        case field.value {
-          LongText(excerpt:, reference:, ..) ->
-            Field(..field, value: LongText(value: new, excerpt:, reference:))
-          _ -> field
-        }
-      })
-    UserSetLongTextExcerpt(path:, value: new) ->
-      edit_field(model, path, fn(field) {
-        case field.value {
-          LongText(value:, reference:, ..) ->
-            Field(..field, value: LongText(value:, excerpt: new, reference:))
-          _ -> field
-        }
-      })
-    UserSetLongTextReference(path:, value: new) ->
-      edit_field(model, path, fn(field) {
-        case field.value {
-          LongText(value:, excerpt:, ..) ->
-            Field(..field, value: LongText(value:, excerpt:, reference: new))
-          _ -> field
-        }
-      })
+    UserSetResourceValue(path:, value:) -> set_resource(model, path, value)
+    UserTriggeredRecovery(trigger:) ->
+      Model(..model, action_to_confirm: trigger)
+    UserSetText(path:, value:) -> set_text(model, path, value)
+    UserSetInteger(path:, value:) -> set_integer(model, path, value)
+    UserSetModifier(path:, value:) -> set_modifier(model, path, value)
+    UserToggledCheckbox(path:) -> toggle_checkbox(model, path)
+    UserSetLongTextValue(path:, value:) ->
+      set_long_text_value(model, path, value)
+    UserSetLongTextExcerpt(path:, excerpt:) ->
+      set_long_text_excerpt(model, path, excerpt)
+    UserSetLongTextReference(path:, reference:) ->
+      set_long_text_reference(model, path, reference)
     UserConfirmedPendingAction -> {
       let Model(id:, sheet:, save:, ..) = model
       let new_sheet =
         Sheet(
           ..sheet,
-          groups: apply_recovery(sheet.groups, model.action_to_confirm),
+          elements: apply_recovery(sheet.elements, model.action_to_confirm),
         )
       Model(..model, sheet: save(new_sheet, id), action_to_confirm: "")
     }
   }
 }
 
-fn edit_field(
+fn update_elements(
   model: Model,
-  path: List(String),
-  f: fn(Field) -> Field,
+  updater: fn(List(Element)) -> List(Element),
 ) -> Model {
   case model {
     NoCharacterSelected -> model
     Model(sheet:, id:, save:, ..) -> {
-      let new_sheet =
-        Sheet(..sheet, groups: map_field_at(sheet.groups, path, f))
+      let new_sheet = Sheet(..sheet, elements: updater(sheet.elements))
       Model(..model, sheet: save(new_sheet, id))
     }
   }
 }
 
-fn map_field_at(
-  groups: List(Group),
-  path: List(String),
-  f: fn(Field) -> Field,
-) -> List(Group) {
-  case path {
-    [head, ..rest] ->
-      list.map(groups, fn(group) {
-        case group {
-          FieldGroup(name:, fields:) if name == head ->
-            FieldGroup(name:, fields: map_field_in_fields(fields, rest, f))
-          SuperGroup(name:, groups: subgroups) if name == head ->
-            SuperGroup(name:, groups: map_field_at(subgroups, rest, f))
-          _ -> group
-        }
-      })
-    [] -> groups
+fn set_text(model: Model, path: List(String), value: String) -> Model {
+  use elements <- update_elements(model)
+  use field_value <- update_value_at(elements, path)
+  case field_value {
+    Text(_) -> Text(value:)
+    other -> other
   }
 }
 
-fn map_field_in_fields(
-  fields: List(Field),
-  path: List(String),
-  f: fn(Field) -> Field,
-) -> List(Field) {
-  case path {
-    [field_name] ->
-      list.map(fields, fn(field) {
-        case field.name == field_name {
-          True -> f(field)
-          False -> field
-        }
-      })
-    _ -> fields
+fn set_integer(model: Model, path: List(String), value: Int) -> Model {
+  use elements <- update_elements(model)
+  use field_value <- update_value_at(elements, path)
+  case field_value {
+    Integer(_) -> Integer(value:)
+    other -> other
   }
 }
 
-fn set_resource(
-  groups: List(Group),
+fn set_modifier(model: Model, path: List(String), value: Int) -> Model {
+  use elements <- update_elements(model)
+  use field_value <- update_value_at(elements, path)
+  case field_value {
+    Modifier(_) -> Modifier(value:)
+    other -> other
+  }
+}
+
+fn toggle_checkbox(model: Model, path: List(String)) -> Model {
+  use elements <- update_elements(model)
+  use field_value <- update_value_at(elements, path)
+  case field_value {
+    Checkbox(value: Off) -> Checkbox(value: On)
+    Checkbox(value: On) -> Checkbox(value: Off)
+    Checkbox(value: Special) -> Checkbox(value: Special)
+    other -> other
+  }
+}
+
+fn set_long_text_value(
+  model: Model,
+  path: List(String),
+  value: String,
+) -> Model {
+  use elements <- update_elements(model)
+  use field_value <- update_value_at(elements, path)
+  case field_value {
+    LongText(..) as self -> LongText(..self, value:)
+    other -> other
+  }
+}
+
+fn set_long_text_excerpt(
+  model: Model,
+  path: List(String),
+  excerpt: String,
+) -> Model {
+  use elements <- update_elements(model)
+  use field_value <- update_value_at(elements, path)
+  case field_value {
+    LongText(..) as self -> LongText(..self, excerpt:)
+    other -> other
+  }
+}
+
+fn set_long_text_reference(
+  model: Model,
+  path: List(String),
+  reference: String,
+) -> Model {
+  use elements <- update_elements(model)
+  use field_value <- update_value_at(elements, path)
+  case field_value {
+    LongText(..) as self -> LongText(..self, reference:)
+    other -> other
+  }
+}
+
+fn set_resource(model: Model, path: List(String), new_value: Int) -> Model {
+  use elements <- update_elements(model)
+  set_resource_at(elements, path, new_value)
+}
+
+fn update_value_at(
+  elements: List(Element),
+  path: List(String),
+  updater: fn(FieldValue) -> FieldValue,
+) -> List(Element) {
+  case path {
+    [head, ..rest] -> do_update_value_at(elements, head, rest, updater)
+    [] -> elements
+  }
+}
+
+fn do_update_value_at(
+  elements: List(Element),
+  head: String,
+  rest: List(String),
+  updater: fn(FieldValue) -> FieldValue,
+) -> List(Element) {
+  list.map(elements, fn(element) {
+    case element {
+      Group(name:, elements: nested) if name == head ->
+        Group(name:, elements: update_value_at(nested, rest, updater))
+      Value(name:, value: field_value) if name == head ->
+        Value(name:, value: updater(field_value))
+      _ -> element
+    }
+  })
+}
+
+fn set_resource_at(
+  elements: List(Element),
   path: List(String),
   new_value: Int,
-) -> List(Group) {
-  use field <- map_field_at(groups, path)
-  case field {
-    Field(name:, value: Resource(max:, recovery:, kind:, ..)) -> {
-      let clamped = case kind {
-        Numeric -> int.max(new_value, 0)
-        Counter -> int.clamp(new_value, min: 0, max: max)
-      }
-      Field(name:, value: Resource(value: clamped, max:, recovery:, kind:))
-    }
-    _ -> field
+) -> List(Element) {
+  case path {
+    [head, ..rest] -> do_set_resource_at(elements, head, rest, new_value)
+    [] -> elements
   }
 }
 
-fn apply_recovery(groups: List(Group), on: String) -> List(Group) {
-  list.map(groups, fn(group) {
-    case group {
-      FieldGroup(name:, fields:) ->
-        FieldGroup(name:, fields: apply_recovery_to_fields(fields, on))
-      SuperGroup(name:, groups: subgroups) ->
-        SuperGroup(name:, groups: apply_recovery(subgroups, on))
-    }
-  })
+fn do_set_resource_at(
+  elements: List(Element),
+  head: String,
+  rest: List(String),
+  new_value: Int,
+) -> List(Element) {
+  use element <- list.map(elements)
+  case element {
+    Group(name:, elements: nested) if name == head ->
+      Group(name:, elements: set_resource_at(nested, rest, new_value))
+    Value(name:, value: field_value) if name == head ->
+      case field_value {
+        Resource(max:, recovery:, kind:, ..) -> {
+          let clamped = case kind {
+            Numeric -> int.max(new_value, 0)
+            Counter -> int.clamp(new_value, min: 0, max: max)
+          }
+          Value(name:, value: Resource(value: clamped, max:, recovery:, kind:))
+        }
+        _ -> element
+      }
+    _ -> element
+  }
 }
 
-fn apply_recovery_to_fields(fields: List(Field), on: String) -> List(Field) {
-  list.map(fields, fn(field) {
-    case field {
-      Field(name:, value: Resource(value:, max:, recovery:, kind:)) ->
-        case list.contains(recovery.on, on) {
-          True -> {
-            let new_value = apply_recovery_kind(value, max, recovery.kind)
-            Field(
-              name:,
-              value: Resource(value: new_value, max:, recovery:, kind:),
-            )
-          }
-          False -> field
-        }
-      _ -> field
+fn apply_recovery(elements: List(Element), trigger: String) -> List(Element) {
+  use element <- list.map(elements)
+  case element {
+    Group(name:, elements: nested) ->
+      Group(name:, elements: apply_recovery(nested, trigger))
+    Value(name:, value: Resource(value:, max:, recovery:, kind:)) -> {
+      case list.contains(recovery.triggers, trigger) {
+        False -> element
+        True ->
+          Value(
+            name:,
+            value: Resource(
+              value: apply_recovery_kind(value, max, recovery.kind),
+              max:,
+              recovery:,
+              kind:,
+            ),
+          )
+      }
     }
-  })
+    Value(..) -> element
+  }
 }
 
 fn apply_recovery_kind(current: Int, max: Int, kind: RecoveryKind) -> Int {
@@ -323,35 +350,31 @@ fn apply_recovery_kind(current: Int, max: Int, kind: RecoveryKind) -> Int {
     ToFull -> max
     ToHalfMax -> max / 2
     ByAmount(value: n) -> int.min(current + n, max) |> int.max(0)
+    ToZero -> 0
   }
 }
 
-fn recovery_triggers(groups: List(Group)) -> List(String) {
-  groups
-  |> list.fold([], collect_triggers_from_group)
+fn recovery_triggers(elements: List(Element)) -> List(String) {
+  elements
+  |> list.fold([], collect_triggers_from_element)
   |> list.reverse
 }
 
-fn collect_triggers_from_group(
+fn collect_triggers_from_element(
   acc: List(String),
-  group: Group,
+  element: Element,
 ) -> List(String) {
-  case group {
-    FieldGroup(fields:, ..) ->
-      list.fold(fields, acc, fn(acc, field) {
-        case field {
-          Field(value: Resource(recovery:, ..), ..) ->
-            list.fold(recovery.on, acc, fn(acc, trigger) {
-              case list.contains(acc, trigger) {
-                True -> acc
-                False -> [trigger, ..acc]
-              }
-            })
-          _ -> acc
+  case element {
+    Value(value: Resource(recovery:, ..), ..) ->
+      list.fold(recovery.triggers, acc, fn(acc, trigger) {
+        case list.contains(acc, trigger) {
+          True -> acc
+          False -> [trigger, ..acc]
         }
       })
-    SuperGroup(groups: subgroups, ..) ->
-      list.fold(subgroups, acc, collect_triggers_from_group)
+    Value(..) -> acc
+    Group(elements: nested, ..) ->
+      list.fold(nested, acc, collect_triggers_from_element)
   }
 }
 
@@ -365,8 +388,8 @@ fn view(model: Model) {
   main_([], [
     view_recovery_bar(model),
     div(
-      [attribute.class("groups")],
-      list.map(model.sheet.groups, view_group(_, [])),
+      [attribute.class("fields")],
+      list.map(model.sheet.elements, view_element(_, [])),
     ),
     html.details([attribute.class("raw-json")], [
       html.summary([], [html.text("raw json")]),
@@ -386,7 +409,7 @@ fn view_recovery_bar(model: Model) -> element.Element(Message) {
   let assert Model(..) = model
     as "view_recovery_bar should be only called when we have a character sheet selected"
 
-  let triggers = recovery_triggers(model.sheet.groups)
+  let triggers = recovery_triggers(model.sheet.elements)
   use <- bool.guard(when: triggers == [], return: element.none())
 
   let buttons = case model.action_to_confirm {
@@ -402,49 +425,37 @@ fn view_recovery_bar(model: Model) -> element.Element(Message) {
 
   div(
     [attribute.class("recovery-bar"), attribute.role("group")],
-    list.fold(triggers, buttons, fn(acc, on) {
-      html.button([event.on_click(UserTriggeredRecovery(on:))], [
-        html.text(on),
+    list.fold(triggers, buttons, fn(acc, trigger) {
+      html.button([event.on_click(UserTriggeredRecovery(trigger:))], [
+        html.text(trigger),
       ])
       |> list.prepend(acc, _)
     }),
   )
 }
 
-fn view_group(
-  group: Group,
+fn view_element(
+  element: Element,
   path_prefix: List(String),
 ) -> element.Element(Message) {
-  case group {
-    FieldGroup(name:, fields:) -> {
+  case element {
+    Value(name:, value: field_value) -> {
+      let path = list.append(path_prefix, [name])
+      let body = view_field_value(field_value, path)
+      let name_span =
+        html.span([attribute.class("field-name")], [html.text(name)])
+      case field_value {
+        Resource(..) -> div([attribute.class("field")], [name_span, body])
+        _ -> label([attribute.class("field")], [name_span, body])
+      }
+    }
+    Group(name:, elements: nested) -> {
       let path = list.append(path_prefix, [name])
       fieldset([], [
         legend([], [html.text(name)]),
-        ..list.map(fields, view_field(_, path))
+        ..list.map(nested, view_element(_, path))
       ])
     }
-    SuperGroup(name:, groups:) -> {
-      let path = list.append(path_prefix, [name])
-      fieldset([], [
-        legend([], [html.text(name)]),
-        ..list.map(groups, view_group(_, path))
-      ])
-    }
-  }
-}
-
-fn view_field(
-  field: Field,
-  path_prefix: List(String),
-) -> element.Element(Message) {
-  let Field(name:, value: field_value) = field
-  let path = list.append(path_prefix, [name])
-  let body = view_field_value(field_value, path)
-  // <label> forwards clicks to its first descendant form control, which breaks Resource interactions
-  let name_span = html.span([attribute.class("field-name")], [html.text(name)])
-  case field_value {
-    Resource(..) -> div([attribute.class("field")], [name_span, body])
-    _ -> label([attribute.class("field")], [name_span, body])
   }
 }
 
@@ -464,7 +475,7 @@ fn view_field_value(
         input([
           type_("text"),
           attribute.value(excerpt),
-          event.on_change(UserSetLongTextExcerpt(path:, value: _)),
+          event.on_change(UserSetLongTextExcerpt(path:, excerpt: _)),
         ])
       let value_textarea =
         textarea(
@@ -476,7 +487,7 @@ fn view_field_value(
           type_("text"),
           attribute.placeholder("reference url"),
           attribute.value(reference),
-          event.on_change(UserSetLongTextReference(path:, value: _)),
+          event.on_change(UserSetLongTextReference(path:, reference: _)),
         ])
       let reference_link = case reference {
         "" -> element.none()

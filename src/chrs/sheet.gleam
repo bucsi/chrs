@@ -2,16 +2,12 @@ import gleam/dynamic/decode
 import gleam/json
 
 pub type Sheet {
-  Sheet(id: String, groups: List(Group))
+  Sheet(id: String, elements: List(Element))
 }
 
-pub type Group {
-  FieldGroup(name: String, fields: List(Field))
-  SuperGroup(name: String, groups: List(Group))
-}
-
-pub type Field {
-  Field(name: String, value: FieldValue)
+pub type Element {
+  Value(name: String, value: FieldValue)
+  Group(name: String, elements: List(Element))
 }
 
 pub type FieldValue {
@@ -35,47 +31,40 @@ pub type CheckboxValue {
 }
 
 pub type RecoveryRule {
-  RecoveryRule(on: List(String), kind: RecoveryKind)
+  RecoveryRule(triggers: List(String), kind: RecoveryKind)
 }
 
 pub type RecoveryKind {
   ToFull
   ToHalfMax
   ByAmount(value: Int)
+  ToZero
 }
 
 // -------------------------------------------------------------------- to_json
 pub fn to_json(sheet: Sheet) -> json.Json {
-  let Sheet(id:, groups:) = sheet
+  let Sheet(id:, elements:) = sheet
   json.object([
     #("id", json.string(id)),
-    #("groups", json.array(groups, group_to_json)),
+    #("fields", json.array(elements, element_to_json)),
   ])
 }
 
-fn group_to_json(group: Group) -> json.Json {
-  case group {
-    FieldGroup(name:, fields:) ->
+fn element_to_json(element: Element) -> json.Json {
+  case element {
+    Value(name:, value:) ->
       json.object([
-        #("type", json.string("field_group")),
+        #("type", json.string("leaf")),
         #("name", json.string(name)),
-        #("fields", json.array(fields, field_to_json)),
+        #("value", field_value_to_json(value)),
       ])
-    SuperGroup(name:, groups:) ->
+    Group(name:, elements:) ->
       json.object([
-        #("type", json.string("super_group")),
+        #("type", json.string("group")),
         #("name", json.string(name)),
-        #("groups", json.array(groups, group_to_json)),
+        #("fields", json.array(elements, element_to_json)),
       ])
   }
-}
-
-fn field_to_json(field: Field) -> json.Json {
-  let Field(name:, value:) = field
-  json.object([
-    #("name", json.string(name)),
-    #("value", field_value_to_json(value)),
-  ])
 }
 
 fn field_value_to_json(field_value: FieldValue) -> json.Json {
@@ -126,9 +115,9 @@ fn resource_kind_to_json(resource_kind: ResourceKind) -> json.Json {
 }
 
 fn recovery_rule_to_json(recovery_rule: RecoveryRule) -> json.Json {
-  let RecoveryRule(on:, kind:) = recovery_rule
+  let RecoveryRule(triggers:, kind:) = recovery_rule
   json.object([
-    #("on", json.array(on, json.string)),
+    #("on", json.array(triggers, json.string)),
     #("kind", recovery_kind_to_json(kind)),
   ])
 }
@@ -148,6 +137,9 @@ fn recovery_kind_to_json(recovery_kind: RecoveryKind) -> json.Json {
         #("type", json.string("by_amount")),
         #("value", json.int(value)),
       ])
+    ToZero -> json.object([
+      #("type", json.string("to_full")),
+    ])
   }
 }
 
@@ -163,24 +155,24 @@ fn checkbox_value_to_json(checkbox_value: CheckboxValue) -> json.Json {
 
 pub fn decoder() -> decode.Decoder(Sheet) {
   use id <- decode.field("id", decode.string)
-  use groups <- decode.field("groups", decode.list(group_decoder()))
-  decode.success(Sheet(id:, groups:))
+  use elements <- decode.field("fields", decode.list(element_decoder()))
+  decode.success(Sheet(id:, elements:))
 }
 
-fn group_decoder() -> decode.Decoder(Group) {
+fn element_decoder() -> decode.Decoder(Element) {
   use variant <- decode.field("type", decode.string)
   case variant {
-    "field_group" -> {
+    "leaf" -> {
       use name <- decode.field("name", decode.string)
-      use fields <- decode.field("fields", decode.list(field_decoder()))
-      decode.success(FieldGroup(name:, fields:))
+      use value <- decode.field("value", field_value_decoder())
+      decode.success(Value(name:, value:))
     }
-    "super_group" -> {
+    "group" -> {
       use name <- decode.field("name", decode.string)
-      use groups <- decode.field("groups", decode.list(group_decoder()))
-      decode.success(SuperGroup(name:, groups:))
+      use elements <- decode.field("fields", decode.list(element_decoder()))
+      decode.success(Group(name:, elements:))
     }
-    _ -> decode.failure(FieldGroup(name: "", fields: []), "Group")
+    _ -> decode.failure(Value(name: "", value: Text(value: "")), "Element")
   }
 }
 
@@ -229,16 +221,10 @@ fn resource_kind_decoder() -> decode.Decoder(ResourceKind) {
   }
 }
 
-fn field_decoder() -> decode.Decoder(Field) {
-  use name <- decode.field("name", decode.string)
-  use value <- decode.field("value", field_value_decoder())
-  decode.success(Field(name:, value:))
-}
-
 fn recovery_rule_decoder() -> decode.Decoder(RecoveryRule) {
-  use on <- decode.field("on", decode.list(decode.string))
+  use triggers <- decode.field("on", decode.list(decode.string))
   use kind <- decode.field("kind", recovery_kind_decoder())
-  decode.success(RecoveryRule(on:, kind:))
+  decode.success(RecoveryRule(triggers:, kind:))
 }
 
 fn recovery_kind_decoder() -> decode.Decoder(RecoveryKind) {
