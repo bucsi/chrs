@@ -15,22 +15,18 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-      - name: Set up Gleam
-        uses: erlef/setup-beam@v1
+      - uses: actions/checkout@v4
+      - uses: erlef/setup-beam@v1
         with:
           otp-version: "28.0"
           gleam-version: "1.16.0"
           rebar3-version: "3"
       - uses: oven-sh/setup-bun@v2
-        run: gleam deps download
+      - run: gleam deps download
       - name: Build app
         run: gleam run -m lustre/dev build chrs --minify
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: "dist"
       - name: Deploy to GitHub Pages
