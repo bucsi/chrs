@@ -137,9 +137,10 @@ fn recovery_kind_to_json(recovery_kind: RecoveryKind) -> json.Json {
         #("type", json.string("by_amount")),
         #("value", json.int(value)),
       ])
-    ToZero -> json.object([
-      #("type", json.string("to_full")),
-    ])
+    ToZero ->
+      json.object([
+        #("type", json.string("to_zero")),
+      ])
   }
 }
 
@@ -232,6 +233,7 @@ fn recovery_kind_decoder() -> decode.Decoder(RecoveryKind) {
   case variant {
     "to_full" -> decode.success(ToFull)
     "to_half_max" -> decode.success(ToHalfMax)
+    "to_zero" -> decode.success(ToZero)
     "by_amount" -> {
       use value <- decode.field("value", decode.int)
       decode.success(ByAmount(value:))
