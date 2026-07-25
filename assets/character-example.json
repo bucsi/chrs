@@ -1,0 +1,591 @@
+{
+  "id": "character-example",
+  "fields": [
+    {
+      "type": "group",
+      "name": "Character Info",
+      "fields": [
+        {
+          "type": "value",
+          "name": "Race",
+          "value": { "type": "text", "value": "Wild Elf" }
+        },
+        {
+          "type": "value",
+          "name": "Size",
+          "value": { "type": "text", "value": "Medium" }
+        },
+        {
+          "type": "value",
+          "name": "Level",
+          "value": { "type": "integer", "value": 3 }
+        },
+        {
+          "type": "value",
+          "name": "Class",
+          "value": { "type": "text", "value": "Fighter (Eldritch Knight)" }
+        },
+        {
+          "type": "value",
+          "name": "Background",
+          "value": { "type": "text", "value": "Knight of the Order" }
+        },
+        {
+          "type": "value",
+          "name": "Description",
+          "value": {
+            "type": "text",
+            "value": "You're a noble elvish warrior of the wilds, skilled in swordplay and sorcery both, sworn to protect your kin and uphold their legacy in the face of any threat."
+          }
+        },
+        {
+          "type": "value",
+          "name": "Credits",
+          "value": {
+            "type": "long_text",
+            "value": "Pre-generated character sheet prepared by Joe Nittoly",
+            "excerpt": "joe.nittoly.ca",
+            "reference": "https://joe.nittoly.ca/free-stuff/dd5e-3rd-level-pre-gens/"
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "Ability Scores",
+      "fields": [
+        {
+          "type": "group",
+          "name": "Strength",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Score",
+              "value": { "type": "integer", "value": 15 }
+            },
+            {
+              "type": "value",
+              "name": "Modifier",
+              "value": { "type": "modifier", "value": 2 }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Dexterity",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Score",
+              "value": { "type": "integer", "value": 16 }
+            },
+            {
+              "type": "value",
+              "name": "Modifier",
+              "value": { "type": "modifier", "value": 3 }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Constitution",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Score",
+              "value": { "type": "integer", "value": 13 }
+            },
+            {
+              "type": "value",
+              "name": "Modifier",
+              "value": { "type": "modifier", "value": 1 }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Intelligence",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Score",
+              "value": { "type": "integer", "value": 12 }
+            },
+            {
+              "type": "value",
+              "name": "Modifier",
+              "value": { "type": "modifier", "value": 1 }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Wisdom",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Score",
+              "value": { "type": "integer", "value": 11 }
+            },
+            {
+              "type": "value",
+              "name": "Modifier",
+              "value": { "type": "modifier", "value": 0 }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Charisma",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Score",
+              "value": { "type": "integer", "value": 8 }
+            },
+            {
+              "type": "value",
+              "name": "Modifier",
+              "value": { "type": "modifier", "value": -1 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "Combat",
+      "fields": [
+        {
+          "type": "value",
+          "name": "Proficiency Bonus",
+          "value": { "type": "modifier", "value": 2 }
+        },
+        {
+          "type": "value",
+          "name": "Armor Class",
+          "value": { "type": "integer", "value": 14 }
+        },
+        {
+          "type": "value",
+          "name": "Armor Class with shield",
+          "value": { "type": "integer", "value": 16 }
+        },
+        {
+          "type": "value",
+          "name": "Shield in hand?",
+          "value": { "type": "checkbox", "value": "on" }
+        },
+        {
+          "type": "value",
+          "name": "Hit Points",
+          "value": {
+            "type": "resource",
+            "value": 35,
+            "max": 35,
+            "kind": "numeric",
+            "recovery": { "on": ["Long Rest"], "kind": { "type": "to_full" } }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Hit Dice",
+          "value": {
+            "type": "resource",
+            "value": 3,
+            "max": 3,
+            "kind": "numeric",
+            "recovery": { "on": ["Long Rest"], "kind": { "type": "to_full" } }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Hit Dice Size",
+          "value": { "type": "text", "value": "d10" }
+        },
+        {
+          "type": "value",
+          "name": "Initiative",
+          "value": { "type": "modifier", "value": 3 }
+        },
+        {
+          "type": "value",
+          "name": "Speed",
+          "value": { "type": "integer", "value": 25 }
+        },
+        {
+          "type": "value",
+          "name": "Death Save Successes",
+          "value": {
+            "type": "resource",
+            "value": 0,
+            "max": 3,
+            "kind": "counter",
+            "recovery": {
+              "on": ["Reset Death Saves"],
+              "kind": { "type": "to_zero" }
+            }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Death Save Failures",
+          "value": {
+            "type": "resource",
+            "value": 0,
+            "max": 3,
+            "kind": "counter",
+            "recovery": {
+              "on": ["Reset Death Saves"],
+              "kind": { "type": "to_zero" }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "Features & Traits",
+      "fields": [
+        {
+          "type": "value",
+          "name": "Darkvision",
+          "value": {
+            "type": "long_text",
+            "value": "You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light.",
+            "excerpt": "See 60 ft. in dim/darkness as bright/dim light.",
+            "reference": "PHB'24 p365"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Fey Ancestry",
+          "value": {
+            "type": "long_text",
+            "value": "You have advantage on saving throws against being charmed, and magic can't put you to sleep.",
+            "excerpt": "Advantage vs. charm; immune to magical sleep.",
+            "reference": "https://5e.tools/races.html#elf_xphb"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Mask of the Wild",
+          "value": {
+            "type": "long_text",
+            "value": "You can attempt to hide when only lightly obscured by foliage, mist, etc.",
+            "excerpt": "Hide when lightly obscured by natural phenomena.",
+            "reference": "https://5e.tools/races.html#elf_xphb"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Dueling",
+          "value": {
+            "type": "long_text",
+            "value": "When you are wielding a melee weapon in one hand and no other weapons, you gain a +2 bonus to damage rolls with that weapon.",
+            "excerpt": "+2 damage with a one-handed melee weapon, no other weapons wielded.",
+            "reference": "https://5e.tools/optionalfeatures.html#dueling_phb"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Second Wind",
+          "value": {
+            "type": "resource",
+            "value": 1,
+            "max": 1,
+            "kind": "counter",
+            "recovery": {
+              "on": ["Short Rest", "Long Rest"],
+              "kind": { "type": "to_full" }
+            }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Action Surge",
+          "value": {
+            "type": "resource",
+            "value": 1,
+            "max": 1,
+            "kind": "counter",
+            "recovery": {
+              "on": ["Short Rest", "Long Rest"],
+              "kind": { "type": "to_full" }
+            }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Weapon Bond",
+          "value": {
+            "type": "long_text",
+            "value": "You perform a 1 hour ritual (which can be done during a short rest) to bond a weapon to you. You cannot be disarmed of your bonded weapon unless you are incapacitated. As a bonus action, you can teleport the weapon to your hand. You can have up to 2 bonded weapons, but can summon only one at a time with your bonus action.",
+            "excerpt": "Bond a weapon; can't be disarmed; teleport it to your hand as a bonus action.",
+            "reference": "https://5e.tools/classes.html#fighter_xphb"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Knightly Regard",
+          "value": {
+            "type": "long_text",
+            "value": "You can receive aid from members of your knightly order and those who are sympathetic to its aims. This can include food, shelter and healing.",
+            "excerpt": "Receive food, shelter, and healing from your order's members and sympathizers.",
+            "reference": "https://5e.tools/optionalfeatures.html#knightly_regard_scag"
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "Proficiencies & Languages",
+      "fields": [
+        {
+          "type": "value",
+          "name": "Proficiencies",
+          "value": {
+            "type": "text",
+            "value": "All armor and shields; all weapons;",
+            "reference": "Player's Handbook"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Languages",
+          "value": { "type": "text", "value": "Common, Elvish, Sylvan" }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "Equipment",
+      "fields": [
+        {
+          "type": "value",
+          "name": "Knight of the Order Gear",
+          "value": {
+            "type": "long_text",
+            "value": "Traveler's Clothes, Signet Ring, Sigil or Crest, 10 gold pieces",
+            "excerpt": "Traveler's clothes, signet ring, sigil/crest, 10 gp.",
+            "reference": "Sword Coast Adventurer's Guide"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Fighter Gear",
+          "value": {
+            "type": "long_text",
+            "value": "Leather armour, Longbow, Arrows (20), Longsword, Shield (AC 16 with shield affixed), Hand axes (2)",
+            "excerpt": "Leather armor, longbow with 20 arrows, longsword, shield, 2 hand axes.",
+            "reference": "Player's Handbook"
+          }
+        },
+        {
+          "type": "value",
+          "name": "Arrows",
+          "value": {
+            "type": "resource",
+            "value": 20,
+            "max": 20,
+            "kind": "counter",
+            "recovery": { "on": ["Long Rest"], "kind": { "type": "no_change" } }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Explorer's Pack",
+          "value": {
+            "type": "long_text",
+            "value": "Bedroll, mess kit, tinderbox, 10 torches, 10 days rations, waterskin, 50 ft. hempen rope",
+            "excerpt": "Bedroll, mess kit, tinderbox, torches, rations, waterskin, rope.",
+            "reference": "Player's Handbook"
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "Attacks & Spellcasting",
+      "fields": [
+        {
+          "type": "group",
+          "name": "Longbow",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Attack Bonus",
+              "value": { "type": "modifier", "value": 5 }
+            },
+            {
+              "type": "value",
+              "name": "Damage/Type",
+              "value": { "type": "text", "value": "1d8+3 piercing" }
+            },
+            {
+              "type": "value",
+              "name": "Note",
+              "value": {
+                "type": "long_text",
+                "value": "You can fire a longbow arrow 150 ft., or up to 600 ft. with disadvantage on the attack roll.",
+                "excerpt": "Range 150 ft., or 600 ft. with disadvantage.",
+                "reference": "Player's Handbook"
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Handaxe",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Attack Bonus",
+              "value": { "type": "modifier", "value": 4 }
+            },
+            {
+              "type": "value",
+              "name": "Damage/Type",
+              "value": { "type": "text", "value": "1d6+2 slashing" }
+            },
+            {
+              "type": "value",
+              "name": "Note",
+              "value": {
+                "type": "long_text",
+                "value": "You can throw a handaxe 20 ft., or up to 60 ft. with disadvantage on the attack roll. If wielding one-handed and not wielding any other weapon, you add an additional +2 to your damage roll (Dueling).",
+                "excerpt": "Thrown range 20/60 ft.; +2 damage if one-handed with Dueling.",
+                "reference": "Player's Handbook"
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Longsword",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Attack Bonus",
+              "value": { "type": "modifier", "value": 4 }
+            },
+            {
+              "type": "value",
+              "name": "Damage/Type",
+              "value": { "type": "text", "value": "1d8+2 slashing" }
+            },
+            {
+              "type": "value",
+              "name": "Note",
+              "value": {
+                "type": "long_text",
+                "value": "You can wield your longsword with both hands to inflict 1d10+3 damage, but you cannot have your shield affixed when doing so. If wielded one-handed with no other weapon, add +2 to damage (Dueling).",
+                "excerpt": "Two-handed: 1d10+3, no shield. One-handed with Dueling: +2 damage.",
+                "reference": "Player's Handbook"
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Spellcasting",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Attack Bonus",
+              "value": { "type": "modifier", "value": 3 }
+            },
+            {
+              "type": "value",
+              "name": "Damage/Type",
+              "value": { "type": "text", "value": "Special" }
+            },
+            {
+              "type": "value",
+              "name": "Spellcasting Ability",
+              "value": { "type": "text", "value": "Intelligence" }
+            },
+            {
+              "type": "value",
+              "name": "Spell Save DC",
+              "value": { "type": "integer", "value": 11 }
+            }
+          ]
+        },
+        {
+          "type": "value",
+          "name": "1st-Level Spell Slots",
+          "value": {
+            "type": "resource",
+            "value": 2,
+            "max": 2,
+            "kind": "counter",
+            "recovery": { "on": ["Long Rest"], "kind": { "type": "to_full" } }
+          }
+        },
+        {
+          "type": "group",
+          "name": "Cantrips",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Mage Hand",
+              "value": {
+                "type": "long_text",
+                "value": "A spectral, floating hand appears at a point you choose within range. The hand lasts for the duration or until you dismiss it as an action. It vanishes if it is ever more than 30 feet away from you or if you cast this spell again. You can use your action to control the hand to manipulate an object, open an unlocked door or container, stow or retrieve an item from an open container, or pour the contents out of a vial. It can't attack, activate magic items, or carry more than 10 pounds.",
+                "excerpt": "Conjuration cantrip. Spectral hand manipulates objects within 30 ft.",
+                "reference": "Player's Handbook"
+              }
+            },
+            {
+              "type": "value",
+              "name": "Message",
+              "value": {
+                "type": "long_text",
+                "value": "You point your finger toward a creature within range and whisper a message. The target hears the message and can reply in a whisper only you can hear. You can cast this spell through solid objects if familiar with the target; certain materials block the spell.",
+                "excerpt": "Transmutation cantrip. Whispered two-way message at range.",
+                "reference": "Player's Handbook"
+              }
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "Spells Known",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Mage Armour",
+              "value": {
+                "type": "long_text",
+                "value": "You touch a willing creature who isn't wearing armor, and a protective magical force surrounds it until the spell ends. The target's base AC becomes 13 + its Dexterity modifier. The spell ends if the target dons armor or if you dismiss it as an action.",
+                "excerpt": "1st-level abjuration. Sets AC to 13 + Dex modifier for 8 hours.",
+                "reference": "Player's Handbook"
+              }
+            },
+            {
+              "type": "value",
+              "name": "Magic Missile",
+              "value": {
+                "type": "long_text",
+                "value": "You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range, dealing 1d4+1 force damage. The darts strike simultaneously and can be directed to hit one creature or several.",
+                "excerpt": "1st-level evocation. Three darts, 1d4+1 force damage each, auto-hit.",
+                "reference": "Player's Handbook"
+              }
+            },
+            {
+              "type": "value",
+              "name": "Expeditious Retreat",
+              "value": {
+                "type": "long_text",
+                "value": "This spell allows you to move at an incredible pace. When you cast this spell, and then as a bonus action on each of your turns until the spell ends, you can take the Dash action.",
+                "excerpt": "1st-level transmutation. Take the Dash action as a bonus action.",
+                "reference": "Player's Handbook"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
