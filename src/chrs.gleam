@@ -22,8 +22,8 @@ import lustre/event
 
 import chrs/sheet.{
   type Element, type FieldValue, type RecoveryKind, type Sheet, ByAmount,
-  Checkbox, Counter, Group, Integer, LongText, Modifier, Numeric, Off, On,
-  Resource, Sheet, Special, Text, ToFull, ToHalfMax, ToZero, Value, NoChange,
+  Checkbox, Counter, Group, Integer, LongText, Modifier, NoChange, Numeric, Off,
+  On, Resource, Sheet, Special, Text, ToFull, ToHalfMax, ToZero, Value,
 }
 
 const key_prefix = "net.bucsi.chrs.characters."
@@ -43,6 +43,7 @@ pub type Message {
   UserSetLongTextExcerpt(path: List(String), excerpt: String)
   UserSetLongTextReference(path: List(String), reference: String)
   UserConfirmedPendingAction
+  UserCancelledPendingAction
   Nothing
 }
 
@@ -158,6 +159,9 @@ fn update(model: Model, msg: Message) -> Model {
           elements: apply_recovery(sheet.elements, model.action_to_confirm),
         )
       Model(..model, sheet: save(new_sheet, id), action_to_confirm: "")
+    }
+    UserCancelledPendingAction -> {
+      Model(..model, action_to_confirm: "")
     }
   }
 }
@@ -416,10 +420,16 @@ fn view_recovery_bar(model: Model) -> element.Element(Message) {
   let buttons = case model.action_to_confirm {
     "" -> [element.none()]
     _ -> [
-      html.button([event.on_click(UserConfirmedPendingAction)], [
-        html.text("Confirm: "),
+      html.section([attribute.class("confirm-action")], [
+        html.text("Are you sure you want to trigger: "),
         html.code([], [html.text(model.action_to_confirm)]),
         html.text("?"),
+      ]),
+      html.button([event.on_click(UserConfirmedPendingAction)], [
+        html.text("✅ Confirm"),
+      ]),
+      html.button([event.on_click(UserCancelledPendingAction)], [
+        html.text("↩️ Cancel"),
       ]),
     ]
   }
@@ -637,13 +647,15 @@ fn view_no_character_selected() {
       html.text(
         "The JSON schema for describing character sheets can be found here: ",
       ),
-      html.a([attribute.href("/character-sheet.schema.json")], [html.text("https://chrs.bucsi.net/character-sheet.schema.json")]),
+      html.a([attribute.href("/character-sheet.schema.json")], [
+        html.text("https://chrs.bucsi.net/character-sheet.schema.json"),
+      ]),
     ]),
     li([], [
-      html.text(
-        "And an example sheet json can be found here: ",
-      ),
-      html.a([attribute.href("/types-example.json")], [html.text("https://chrs.bucsi.net/types-example.json")]),
+      html.text("And an example sheet json can be found here: "),
+      html.a([attribute.href("/types-example.json")], [
+        html.text("https://chrs.bucsi.net/types-example.json"),
+      ]),
     ]),
   ])
 }
