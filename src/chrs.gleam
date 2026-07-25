@@ -23,7 +23,7 @@ import lustre/event
 import chrs/sheet.{
   type Element, type FieldValue, type RecoveryKind, type Sheet, ByAmount,
   Checkbox, Counter, Group, Integer, LongText, Modifier, Numeric, Off, On,
-  Resource, Sheet, Special, Text, ToFull, ToHalfMax, ToZero, Value,
+  Resource, Sheet, Special, Text, ToFull, ToHalfMax, ToZero, Value, NoChange,
 }
 
 const key_prefix = "net.bucsi.chrs.characters."
@@ -351,6 +351,7 @@ fn apply_recovery_kind(current: Int, max: Int, kind: RecoveryKind) -> Int {
     ToHalfMax -> max / 2
     ByAmount(value: n) -> int.min(current + n, max) |> int.max(0)
     ToZero -> 0
+    NoChange -> current
   }
 }
 

@@ -39,6 +39,7 @@ pub type RecoveryKind {
   ToHalfMax
   ByAmount(value: Int)
   ToZero
+  NoChange
 }
 
 // -------------------------------------------------------------------- to_json
@@ -141,6 +142,10 @@ fn recovery_kind_to_json(recovery_kind: RecoveryKind) -> json.Json {
       json.object([
         #("type", json.string("to_zero")),
       ])
+    NoChange ->
+      json.object([
+        #("type", json.string("no_change")),
+      ])
   }
 }
 
@@ -234,6 +239,7 @@ fn recovery_kind_decoder() -> decode.Decoder(RecoveryKind) {
     "to_full" -> decode.success(ToFull)
     "to_half_max" -> decode.success(ToHalfMax)
     "to_zero" -> decode.success(ToZero)
+    "no_change" -> decode.success(NoChange)
     "by_amount" -> {
       use value <- decode.field("value", decode.int)
       decode.success(ByAmount(value:))
