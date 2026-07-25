@@ -1,7 +1,7 @@
 import chrs/sheet.{
-  ByAmount, Checkbox, Counter, Value, Integer, LongText, Modifier,
-  Numeric, Off, On, RecoveryRule, Resource, Sheet, Special, Text,
-  ToFull, ToHalfMax, ToZero, Group
+  ByAmount, Checkbox, Counter, Group, Integer, LongText, Modifier, Numeric, Off,
+  On, RecoveryRule, Resource, Sheet, Special, Text, ToFull, ToHalfMax, ToZero,
+  Value,
 }
 import gleeunit
 
@@ -251,13 +251,80 @@ pub fn serah_test() {
 }
 
 pub fn rob_morgan_test() {
-  let character = Sheet("Rob Morgan", [
-    Group("Details", [
-      Value("Level", Integer(2)),
-      Value("Class", Text("Necromancer")),
-      Value("Ancestry", Text("Human")),
-      Value("Background", Text("Necromancer")),
-
+  let character =
+    Sheet("Rob Morgan", [
+      Group("Details", [
+        Value("Level", Integer(2)),
+        Value("Class", Text("Necromancer")),
+        Value("Ancestry", Text("Human")),
+        Value("Background", Text("Necromancer")),
+      ]),
     ])
-  ])
+}
+
+pub fn all_types_test() {
+  let character =
+    Sheet("All Types", [
+      Value("Text", Text("Hello")),
+      Value("Long Text", LongText("Hello", "Excerpt", "Reference")),
+      Value("Integer", Integer(42)),
+      Value("Modifier", Modifier(3)),
+      Value("Checkbox Off", Checkbox(Off)),
+      Value("Checkbox On", Checkbox(On)),
+      Value("Checkbox Special", Checkbox(Special)),
+      Value(
+        "Resource Numeric",
+        Resource(10, 20, RecoveryRule(["Long Rest"], ToFull), Numeric),
+      ),
+      Value(
+        "Resource Counter",
+        Resource(5, 10, RecoveryRule(["Short Rest"], ByAmount(2)), Counter),
+      ),
+      Group("Groups can be", [
+        Group("Nested", [
+          Value("Text", Text("Hello")),
+          Value("Integer", Integer(42)),
+        ]),
+      ]),
+      Group("Recovery Kinds", [
+        Value(
+          "Resource Numeric",
+          Resource(
+            10,
+            20,
+            RecoveryRule(["Rules Example Rest"], ToFull),
+            Numeric,
+          ),
+        ),
+        Value(
+          "Resource Counter",
+          Resource(
+            5,
+            10,
+            RecoveryRule(["Rules Example Rest"], ByAmount(2)),
+            Counter,
+          ),
+        ),
+        Value(
+          "Resource ToHalfMax",
+          Resource(
+            5,
+            10,
+            RecoveryRule(["Rules Example Rest"], ToHalfMax),
+            Numeric,
+          ),
+        ),
+        Value(
+          "Resource ToZero",
+          Resource(
+            5,
+            10,
+            RecoveryRule(["Rules Example Rest"], ToZero),
+            Numeric,
+          ),
+        ),
+      ]),
+    ])
+
+  assert Ok(character) == character |> sheet.to_json |> json.to_string |> echo |> json.parse(sheet.decoder())
 }

@@ -1,0 +1,154 @@
+{
+  "id": "All Types",
+  "fields": [
+    {
+      "type": "value",
+      "name": "Text",
+      "value": { "type": "text", "value": "Hello" }
+    },
+    {
+      "type": "value",
+      "name": "Long Text",
+      "value": {
+        "type": "long_text",
+        "value": "Excerpt",
+        "excerpt": "Hello",
+        "reference": "Reference"
+      }
+    },
+    {
+      "type": "value",
+      "name": "Integer",
+      "value": { "type": "integer", "value": 42 }
+    },
+    {
+      "type": "value",
+      "name": "Modifier",
+      "value": { "type": "modifier", "value": 3 }
+    },
+    {
+      "type": "value",
+      "name": "Checkbox Off",
+      "value": { "type": "checkbox", "value": "off" }
+    },
+    {
+      "type": "value",
+      "name": "Checkbox On",
+      "value": { "type": "checkbox", "value": "on" }
+    },
+    {
+      "type": "value",
+      "name": "Checkbox Special",
+      "value": { "type": "checkbox", "value": "special" }
+    },
+    {
+      "type": "value",
+      "name": "Resource Numeric",
+      "value": {
+        "type": "resource",
+        "value": 10,
+        "max": 20,
+        "kind": "numeric",
+        "recovery": { "on": ["Long Rest"], "kind": { "type": "to_full" } }
+      }
+    },
+    {
+      "type": "value",
+      "name": "Resource Counter",
+      "value": {
+        "type": "resource",
+        "value": 5,
+        "max": 10,
+        "kind": "counter",
+        "recovery": {
+          "on": ["Short Rest"],
+          "kind": { "type": "by_amount", "value": 2 }
+        }
+      }
+    },
+    {
+      "type": "group",
+      "name": "Groups can be",
+      "fields": [
+        {
+          "type": "group",
+          "name": "Nested",
+          "fields": [
+            {
+              "type": "value",
+              "name": "Text",
+              "value": { "type": "text", "value": "Hello" }
+            },
+            {
+              "type": "value",
+              "name": "Integer",
+              "value": { "type": "integer", "value": 42 }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "Recovery Kinds",
+      "fields": [
+        {
+          "type": "value",
+          "name": "Resource Numeric",
+          "value": {
+            "type": "resource",
+            "value": 10,
+            "max": 20,
+            "kind": "numeric",
+            "recovery": {
+              "on": ["Rules Example Rest"],
+              "kind": { "type": "to_full" }
+            }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Resource Counter",
+          "value": {
+            "type": "resource",
+            "value": 5,
+            "max": 10,
+            "kind": "counter",
+            "recovery": {
+              "on": ["Rules Example Rest"],
+              "kind": { "type": "by_amount", "value": 2 }
+            }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Resource ToHalfMax",
+          "value": {
+            "type": "resource",
+            "value": 5,
+            "max": 10,
+            "kind": "numeric",
+            "recovery": {
+              "on": ["Rules Example Rest"],
+              "kind": { "type": "to_half_max" }
+            }
+          }
+        },
+        {
+          "type": "value",
+          "name": "Resource ToZero",
+          "value": {
+            "type": "resource",
+            "value": 5,
+            "max": 10,
+            "kind": "numeric",
+            "recovery": {
+              "on": ["Rules Example Rest"],
+              "kind": { "type": "to_zero" }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

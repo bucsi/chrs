@@ -1,0 +1,170 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chrs.bucsi.net/character-sheet.schema.json",
+  "title": "FieldGroup",
+  "type": "object",
+  "required": ["id", "fields"],
+  "properties": {
+    "id": { "type": "string" },
+    "fields": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Field" }
+    }
+  },
+  "additionalProperties": false,
+
+  "definitions": {
+    "Field": {
+      "oneOf": [
+        { "$ref": "#/definitions/ValueField" },
+        { "$ref": "#/definitions/GroupField" }
+      ]
+    },
+
+    "GroupField": {
+      "type": "object",
+      "required": ["type", "name", "fields"],
+      "properties": {
+        "type": { "const": "group" },
+        "name": { "type": "string" },
+        "fields": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Field" }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "ValueField": {
+      "type": "object",
+      "required": ["type", "name", "value"],
+      "properties": {
+        "type": { "const": "value" },
+        "name": { "type": "string" },
+        "value": { "$ref": "#/definitions/Value" }
+      },
+      "additionalProperties": false
+    },
+
+    "Value": {
+      "oneOf": [
+        { "$ref": "#/definitions/TextValue" },
+        { "$ref": "#/definitions/LongTextValue" },
+        { "$ref": "#/definitions/IntegerValue" },
+        { "$ref": "#/definitions/ModifierValue" },
+        { "$ref": "#/definitions/CheckboxValue" },
+        { "$ref": "#/definitions/ResourceValue" }
+      ]
+    },
+
+    "TextValue": {
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "text" },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "LongTextValue": {
+      "type": "object",
+      "required": ["type", "value", "excerpt", "reference"],
+      "properties": {
+        "type": { "const": "long_text" },
+        "value": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "reference": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "IntegerValue": {
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "integer" },
+        "value": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+
+    "ModifierValue": {
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "modifier" },
+        "value": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+
+    "CheckboxValue": {
+      "type": "object",
+      "required": ["type", "value"],
+      "properties": {
+        "type": { "const": "checkbox" },
+        "value": { "enum": ["off", "on", "special"] }
+      },
+      "additionalProperties": false
+    },
+
+    "ResourceValue": {
+      "type": "object",
+      "required": ["type", "value", "max", "kind", "recovery"],
+      "properties": {
+        "type": { "const": "resource" },
+        "value": { "type": "integer" },
+        "max": { "type": "integer" },
+        "kind": { "enum": ["numeric", "counter"] },
+        "recovery": { "$ref": "#/definitions/Recovery" }
+      },
+      "additionalProperties": false
+    },
+
+    "Recovery": {
+      "type": "object",
+      "required": ["on", "kind"],
+      "properties": {
+        "on": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "kind": { "$ref": "#/definitions/RecoveryKind" }
+      },
+      "additionalProperties": false
+    },
+
+    "RecoveryKind": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "to_full" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "to_half_max" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": { "type": { "const": "to_zero" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": { "const": "by_amount" },
+            "value": { "type": "integer" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

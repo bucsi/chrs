@@ -16,7 +16,7 @@ import lustre
 import lustre/attribute.{checked, readonly, type_, value}
 import lustre/element
 import lustre/element/html.{
-  div, fieldset, input, label, legend, main as main_, section, textarea,
+  div, fieldset, input, label, legend, li, main as main_, textarea, ul,
 }
 import lustre/event
 
@@ -620,12 +620,29 @@ fn view_no_character_selected() {
   let NanoID(first4) = lanyard.custom_length(4)
   let NanoID(last4) = lanyard.custom_length(4)
   let id = first4 <> "-" <> last4
-  div([], [
-    section([], [
+  ul([], [
+    li([], [
       html.text(
         "No character selected. Please select a character, or create a new one with id: ",
       ),
       html.a([attribute.href("/#" <> id)], [html.text(id)]),
+    ]),
+    li([], [
+      html.text(
+        "To create a new character, just click the link above. To select an existing character, enter its id in the URL hash.",
+      ),
+    ]),
+    li([], [
+      html.text(
+        "The JSON schema for describing character sheets can be found here: ",
+      ),
+      html.a([attribute.href("/character-sheet.schema.json")], [html.text("https://chrs.bucsi.net/character-sheet.schema.json")]),
+    ]),
+    li([], [
+      html.text(
+        "And an example sheet json can be found here: ",
+      ),
+      html.a([attribute.href("/types-example.json")], [html.text("https://chrs.bucsi.net/types-example.json")]),
     ]),
   ])
 }

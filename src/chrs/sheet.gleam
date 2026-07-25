@@ -54,7 +54,7 @@ fn element_to_json(element: Element) -> json.Json {
   case element {
     Value(name:, value:) ->
       json.object([
-        #("type", json.string("leaf")),
+        #("type", json.string("value")),
         #("name", json.string(name)),
         #("value", field_value_to_json(value)),
       ])
@@ -163,7 +163,7 @@ pub fn decoder() -> decode.Decoder(Sheet) {
 fn element_decoder() -> decode.Decoder(Element) {
   use variant <- decode.field("type", decode.string)
   case variant {
-    "leaf" -> {
+    "value" -> {
       use name <- decode.field("name", decode.string)
       use value <- decode.field("value", field_value_decoder())
       decode.success(Value(name:, value:))
