@@ -11,8 +11,9 @@ pub type Element {
 }
 
 pub type FieldValue {
-  Text(value: String)
-  LongText(excerpt: String, value: String, reference: String)
+  ShortText(value: String)
+  LongText(value: String)
+  Reference(label: String, href: String)
   Integer(value: Int)
   Modifier(value: Int)
   Checkbox(value: CheckboxValue)
@@ -70,17 +71,10 @@ fn element_to_json(element: Element) -> json.Json {
 
 fn field_value_to_json(field_value: FieldValue) -> json.Json {
   case field_value {
-    Text(value:) ->
+    ShortText(value:) ->
       json.object([
         #("type", json.string("text")),
         #("value", json.string(value)),
-      ])
-    LongText(value:, excerpt:, reference:) ->
-      json.object([
-        #("type", json.string("long_text")),
-        #("value", json.string(value)),
-        #("excerpt", json.string(excerpt)),
-        #("reference", json.string(reference)),
       ])
     Integer(value:) ->
       json.object([
@@ -105,6 +99,8 @@ fn field_value_to_json(field_value: FieldValue) -> json.Json {
         #("kind", resource_kind_to_json(kind)),
         #("recovery", recovery_rule_to_json(recovery)),
       ])
+    LongText(value:) -> todo
+    Reference(label:, href:) -> todo
   }
 }
 
@@ -178,7 +174,7 @@ fn element_decoder() -> decode.Decoder(Element) {
       use elements <- decode.field("fields", decode.list(element_decoder()))
       decode.success(Group(name:, elements:))
     }
-    _ -> decode.failure(Value(name: "", value: Text(value: "")), "Element")
+    _ -> decode.failure(Value(name: "", value: ShortText(value: "")), "Element")
   }
 }
 
@@ -187,13 +183,7 @@ fn field_value_decoder() -> decode.Decoder(FieldValue) {
   case variant {
     "text" -> {
       use value <- decode.field("value", decode.string)
-      decode.success(Text(value:))
-    }
-    "long_text" -> {
-      use value <- decode.field("value", decode.string)
-      use reference <- decode.field("reference", decode.string)
-      use excerpt <- decode.field("excerpt", decode.string)
-      decode.success(LongText(value:, excerpt:, reference:))
+      decode.success(ShortText(value:))
     }
     "integer" -> {
       use value <- decode.field("value", decode.int)
@@ -214,7 +204,7 @@ fn field_value_decoder() -> decode.Decoder(FieldValue) {
       use kind <- decode.field("kind", resource_kind_decoder())
       decode.success(Resource(value:, max:, recovery:, kind:))
     }
-    _ -> decode.failure(Text(value: ""), "FieldValue")
+    _ -> decode.failure(ShortText(value: ""), "FieldValue")
   }
 }
 
