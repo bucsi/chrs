@@ -23,7 +23,7 @@ import lustre/event
 import chrs/sheet.{
   type Element, type FieldValue, type RecoveryKind, type Sheet, ByAmount,
   Checkbox, Counter, Group, Integer, LongText, Modifier, NoChange, Numeric, Off,
-  On, Resource, Sheet, Special, Text, ToFull, ToHalfMax, ToZero, Value,
+  On, Resource, Sheet, ShortText, Special, ToFull, ToHalfMax, ToZero, Value,
 }
 
 const key_prefix = "net.bucsi.chrs.characters."
@@ -39,9 +39,6 @@ pub type Message {
   UserSetInteger(path: List(String), value: Int)
   UserSetModifier(path: List(String), value: Int)
   UserToggledCheckbox(path: List(String))
-  UserSetLongTextValue(path: List(String), value: String)
-  UserSetLongTextExcerpt(path: List(String), excerpt: String)
-  UserSetLongTextReference(path: List(String), reference: String)
   UserConfirmedPendingAction
   UserCancelledPendingAction
   Nothing
@@ -145,12 +142,6 @@ fn update(model: Model, msg: Message) -> Model {
     UserSetInteger(path:, value:) -> set_integer(model, path, value)
     UserSetModifier(path:, value:) -> set_modifier(model, path, value)
     UserToggledCheckbox(path:) -> toggle_checkbox(model, path)
-    UserSetLongTextValue(path:, value:) ->
-      set_long_text_value(model, path, value)
-    UserSetLongTextExcerpt(path:, excerpt:) ->
-      set_long_text_excerpt(model, path, excerpt)
-    UserSetLongTextReference(path:, reference:) ->
-      set_long_text_reference(model, path, reference)
     UserConfirmedPendingAction -> {
       let Model(id:, sheet:, save:, ..) = model
       let new_sheet =
@@ -183,7 +174,7 @@ fn set_text(model: Model, path: List(String), value: String) -> Model {
   use elements <- update_elements(model)
   use field_value <- update_value_at(elements, path)
   case field_value {
-    Text(_) -> Text(value:)
+    ShortText(_) -> ShortText(value:)
     other -> other
   }
 }
@@ -213,45 +204,6 @@ fn toggle_checkbox(model: Model, path: List(String)) -> Model {
     Checkbox(value: Off) -> Checkbox(value: On)
     Checkbox(value: On) -> Checkbox(value: Off)
     Checkbox(value: Special) -> Checkbox(value: Special)
-    other -> other
-  }
-}
-
-fn set_long_text_value(
-  model: Model,
-  path: List(String),
-  value: String,
-) -> Model {
-  use elements <- update_elements(model)
-  use field_value <- update_value_at(elements, path)
-  case field_value {
-    LongText(..) as self -> LongText(..self, value:)
-    other -> other
-  }
-}
-
-fn set_long_text_excerpt(
-  model: Model,
-  path: List(String),
-  excerpt: String,
-) -> Model {
-  use elements <- update_elements(model)
-  use field_value <- update_value_at(elements, path)
-  case field_value {
-    LongText(..) as self -> LongText(..self, excerpt:)
-    other -> other
-  }
-}
-
-fn set_long_text_reference(
-  model: Model,
-  path: List(String),
-  reference: String,
-) -> Model {
-  use elements <- update_elements(model)
-  use field_value <- update_value_at(elements, path)
-  case field_value {
-    LongText(..) as self -> LongText(..self, reference:)
     other -> other
   }
 }
@@ -475,48 +427,12 @@ fn view_field_value(
   path: List(String),
 ) -> element.Element(Message) {
   case field_value {
-    Text(value: v) ->
+    ShortText(value: v) ->
       input([
         type_("text"),
         attribute.value(v),
         event.on_change(UserSetText(path:, value: _)),
       ])
-    LongText(value:, excerpt:, reference:) -> {
-      let excerpt_input =
-        input([
-          type_("text"),
-          attribute.value(excerpt),
-          event.on_change(UserSetLongTextExcerpt(path:, excerpt: _)),
-        ])
-      let value_textarea =
-        textarea(
-          [event.on_change(UserSetLongTextValue(path:, value: _))],
-          value,
-        )
-      let reference_input =
-        input([
-          type_("text"),
-          attribute.placeholder("reference url"),
-          attribute.value(reference),
-          event.on_change(UserSetLongTextReference(path:, reference: _)),
-        ])
-      let reference_link = case reference {
-        "" -> element.none()
-        _ ->
-          html.a([attribute.href(reference), attribute.target("_blank")], [
-            html.text("ref"),
-          ])
-      }
-      div([], [
-        excerpt_input,
-        html.details([], [
-          html.summary([], [html.text("details")]),
-          value_textarea,
-          div([], [reference_input, reference_link]),
-        ]),
-      ])
-    }
-
     Integer(value: v) ->
       input([
         type_("number"),
@@ -568,6 +484,8 @@ fn view_field_value(
         Numeric -> view_numeric_resource(path, v, max)
         Counter -> view_counter_resource(path, v, max)
       }
+    LongText(value:) -> todo
+    sheet.Reference(label:, href:) -> todo
   }
 }
 
