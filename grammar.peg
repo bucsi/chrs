@@ -1,0 +1,43 @@
+// original version, should be rechecked with the regexes from atto
+
+CharacterSheet {
+  Sheet       = Element*
+  Element     = Group | Value
+  Group       = "group" Key "{" Element* "}"
+  Value       = Key ":" FieldValue
+
+  FieldValue  = Resource
+              | Checkbox
+              | Modifier
+              | Integer
+              | Ref
+              | ShortText
+              | LongText
+
+  Resource    = "resource" "{" Fraction "[" Triggers "]" RecoveryKind "}"
+  Fraction    = digit+ "/" digit+ | digit+".."digit+
+  
+  Triggers      = TriggerPhrase ("," TriggerPhrase)*
+  TriggerPhrase = Word+
+  
+  RecoveryKind  = "to_full" 
+                | "to_half" 
+                | "to_zero" 
+                | "no_change" 
+                | Modifier
+
+  // Enforced standard: Keys are always unquoted; values are always quoted or formatted literals
+  Key         = (~("\n" | ":") (letter | digit | "_" | "'" | "-" | " "))+
+  ShortText   = Quoted
+  
+  // Delimited long text using curly braces
+  LongText    = "{" (~"}" any)* "}"
+
+  // Lexical and helper rules
+  Quoted      = "\"" (~"\"" any)* "\""
+  Word        = letter (alnum | "_")*
+  Checkbox    = "On" | "Off" | "Special"
+  Modifier    = ("+" | "-") digit+
+  Integer     = digit+
+  Ref         = "[" (~"]" any)* "]" ("(" (~")" any)* ")")?
+}
