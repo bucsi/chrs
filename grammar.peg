@@ -1,11 +1,15 @@
-// original version, should be rechecked with the regexes from atto
-
 CharacterSheet {
+  // Lexical convention: whitespace (spaces, tabs, newlines, including
+  // blank lines) is insignificant between any two tokens or literals,
+  // and is skipped there implicitly — it is not written into the rules
+  // below except where a rule's own definition depends on it directly
+  // (e.g. TriggerPhrase's internal single space, Key's internal spaces).
+  // This applies at the very start and very end of the document too.
+
   Sheet       = Element*
   Element     = Group | Value
   Group       = "group" Key "{" Element* "}"
   Value       = Key ":" FieldValue
-
   FieldValue  = Resource
               | Checkbox
               | Modifier
@@ -14,30 +18,33 @@ CharacterSheet {
               | ShortText
               | LongText
 
-  Resource    = "resource" "{" Fraction "[" Triggers "]" RecoveryKind "}"
-  Fraction    = digit+ "/" digit+ | digit+".."digit+
-  
-  Triggers      = TriggerPhrase ("," TriggerPhrase)*
-  TriggerPhrase = Word+
-  
+  Resource     = ResourceKind "{" Fraction "[" Triggers "]" RecoveryKind "}"
+  ResourceKind = "resource" | "counter"
+  Fraction     = digit+ "/" digit+
+
+  Triggers      = (TriggerPhrase ("," TriggerPhrase)*)?
+  TriggerPhrase = Word (" " Word)*
+
   RecoveryKind  = "to_full" 
                 | "to_half" 
                 | "to_zero" 
                 | "no_change" 
                 | Modifier
 
-  // Enforced standard: Keys are always unquoted; values are always quoted or formatted literals
-  Key         = (~("\n" | ":") (letter | digit | "_" | "'" | "-" | " "))+
+  // Freeform author-facing name. Anything except the structural
+  // delimiters below; surrounding whitespace is trimmed.
+  Key         = (~("\n" | ":" | "{" | "}") any)+
   ShortText   = Quoted
-  
-  // Delimited long text using curly braces
   LongText    = "{" (~"}" any)* "}"
-
-  // Lexical and helper rules
   Quoted      = "\"" (~"\"" any)* "\""
-  Word        = letter (alnum | "_")*
+
+  // Strict token used only inside TriggerPhrase.
+  Word        = letter+
+
   Checkbox    = "On" | "Off" | "Special"
   Modifier    = ("+" | "-") digit+
   Integer     = digit+
   Ref         = "[" (~"]" any)* "]" ("(" (~")" any)* ")")?
+  // whitespace between tokens is always insignificant, per convention —
+  // so "] (" and "](" are equivalent, no special-casing needed here
 }
