@@ -1,11 +1,13 @@
-import atto
-import atto/ops
-import atto/text
-import atto/text_util
 import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
+
+import atto
+import atto/error
+import atto/ops
+import atto/text
+import atto/text_util
 
 // Import your custom types package/module here
 import chrs/sheet.{
@@ -26,19 +28,26 @@ fn lexeme(
 }
 
 fn keyword(s: String) -> atto.Parser(String, String, String, a, b) {
+  use <- atto.label(s)
   case string.length(s) {
     1 -> lexeme(atto.token(s))
     _ -> lexeme(text.match(s))
   }
 }
 
-pub fn parse_sheet(input: String) -> Result(Sheet, atto.ParseError(a, String)) {
+pub fn run(input: String) -> Result(Sheet, atto.ParseError(a, String)) {
   let parser = {
+    use _ <- atto.do(ops.maybe(text.match("\\s*")))
     use elements <- atto.do(ops.many(element()))
     use _ <- atto.do(atto.eof())
     atto.pure(Sheet(id: "sheet", elements: elements))
   }
   atto.run(parser, text.new(input), Nil)
+}
+
+pub fn explain(err: atto.ParseError(a, String), input: String) {
+  let in = text.new(input)
+  error.pretty(err, in, color: False)
 }
 
 fn element() -> atto.Parser(Element, String, String, a, b) {
@@ -50,14 +59,23 @@ fn key() -> atto.Parser(String, String, String, a, b) {
   atto.pure(string.trim(matched))
 }
 
-fn group_name() {
-  use matched <- atto.do(lexeme(text.match("[^\\{]+")))
-  atto.pure(string.trim(matched))
+fn word() {
+  lexeme(text.match("[a-zA-Z]+"))
+}
+
+fn trigger_phrase() {
+  use first <- atto.do(word())
+  use rest <- atto.do(ops.many(word()))
+  atto.pure(string.join([first, ..rest], " "))
+}
+
+fn triggers() {
+  ops.sep(trigger_phrase(), by: keyword(","))
 }
 
 fn group() -> atto.Parser(Element, String, String, a, b) {
   use _ <- atto.do(keyword("group"))
-  use name <- atto.do(group_name())
+  use name <- atto.do(key())
   use _ <- atto.do(keyword("{"))
   use elements <- atto.do(ops.many(element()))
   use _ <- atto.do(keyword("}"))
@@ -84,20 +102,22 @@ fn field_value() -> atto.Parser(FieldValue, String, String, a, b) {
   ])
 }
 
-fn reference() {
-  use matched <- atto.do(lexeme(text.match("\\[[^\\]]+\\](\\([^\\)]*\\))*")))
-  case string.split_once(matched, on: "](") {
-    Ok(#(left, right)) -> {
-      let label = string.drop_start(left, 1) |> string.trim()
-      let href = string.drop_end(right, 1) |> string.trim()
-      atto.pure(Reference(label: label, href: href))
-    }
-    Error(Nil) -> {
-      let label =
-        string.drop_start(string.drop_end(matched, 1), 1) |> string.trim()
-      atto.pure(Reference(label: label, href: ""))
-    }
-  }
+fn reference() -> atto.Parser(FieldValue, String, String, a, b) {
+  use _ <- atto.do(keyword("["))
+  use label <- atto.do(ops.maybe(text.match("[^\\]]+")))
+  use _ <- atto.do(keyword("]"))
+  use href <- atto.do(ops.maybe(href_group()))
+  atto.pure(Reference(
+    label: label |> result.unwrap("") |> string.trim(),
+    href: href |> result.unwrap(""),
+  ))
+}
+
+fn href_group() -> atto.Parser(String, String, String, a, b) {
+  use _ <- atto.do(keyword("("))
+  use href <- atto.do(ops.maybe(text.match("[^)]+")))
+  use _ <- atto.do(keyword(")"))
+  atto.pure(href |> result.unwrap("") |> string.trim())
 }
 
 fn integer() -> atto.Parser(FieldValue, String, String, a, b) {
@@ -106,6 +126,7 @@ fn integer() -> atto.Parser(FieldValue, String, String, a, b) {
 }
 
 fn modifier() -> atto.Parser(FieldValue, String, String, a, b) {
+  use <- atto.label("modifier (+-N)")
   use mod_str <- atto.do(lexeme(text.match("[+-][0-9]+")))
   case int.parse(mod_str) {
     Ok(n) -> atto.pure(Modifier(n))
@@ -122,12 +143,14 @@ fn checkbox() -> atto.Parser(FieldValue, String, String, a, b) {
 }
 
 fn short_text() -> atto.Parser(FieldValue, String, String, a, b) {
+  use <- atto.label("quoted text")
   use quoted <- atto.do(lexeme(text.match("\"[^\"]*\"")))
   let unquoted = quoted |> string.drop_start(1) |> string.drop_end(1)
   atto.pure(ShortText(unquoted))
 }
 
 fn long_text() -> atto.Parser(FieldValue, String, String, a, b) {
+  use <- atto.label("long text wrapped in {}")
   use parens <- atto.do(lexeme(text.match("\\{[\\s\\S]*?\\}")))
   let unparens = parens |> string.drop_start(1) |> string.drop_end(1)
   atto.pure(LongText(unparens))
@@ -141,16 +164,13 @@ fn resource(
   use _ <- atto.do(keyword("{"))
   use frac <- atto.do(lexeme(text.match("[0-9]+/[0-9]+")))
   use _ <- atto.do(keyword("["))
-  use triggers <- atto.do(ops.sep(
-    lexeme(text.match("[a-zA-Z_][a-zA-Z0-9_]*")),
-    by: keyword(","),
-  ))
+  use triggers <- atto.do(triggers())
   use _ <- atto.do(keyword("]"))
   use recovery_kind_val <- atto.do(recovery_kind())
   use _ <- atto.do(keyword("}"))
 
   let parts = string.split(frac, on: "/")
-  let current = case parts {
+  let value = case parts {
     [c, ..] -> result.unwrap(int.parse(c), 0)
     _ -> 0
   }
@@ -159,8 +179,8 @@ fn resource(
     _ -> 0
   }
 
-  let recovery = RecoveryRule(triggers: triggers, kind: recovery_kind_val)
-  atto.pure(Resource(value: current, max: max, recovery: recovery, kind: kind))
+  let recovery = RecoveryRule(triggers:, kind: recovery_kind_val)
+  atto.pure(Resource(value:, max:, recovery:, kind:))
 }
 
 fn recovery_kind() -> atto.Parser(RecoveryKind, String, String, a, b) {
