@@ -155,7 +155,6 @@ pub fn update(model: Model, msg: Message) -> Model {
     UserCancelledPendingAction -> {
       Model(..model, action_to_confirm: "")
     }
-    UserEditedLongText(path:, value:) -> set_long_text(model, path, value)
   }
 }
 
