@@ -4,6 +4,7 @@ import gleam/json
 import gleam/list
 import gleam/result
 import gleam/string
+import lustre/element/svg
 
 import lanyard.{NanoID}
 import plinth/browser/location
@@ -120,7 +121,7 @@ fn do_init(local_id: String) -> Model {
   )
 }
 
-fn update(model: Model, msg: Message) -> Model {
+pub fn update(model: Model, msg: Message) -> Model {
   use <- bool.guard(when: model == NoCharacterSelected, return: model)
   let assert Model(..) = model
 
@@ -154,6 +155,7 @@ fn update(model: Model, msg: Message) -> Model {
     UserCancelledPendingAction -> {
       Model(..model, action_to_confirm: "")
     }
+    UserEditedLongText(path:, value:) -> set_long_text(model, path, value)
   }
 }
 
@@ -174,7 +176,8 @@ fn set_text(model: Model, path: List(String), value: String) -> Model {
   use elements <- update_elements(model)
   use field_value <- update_value_at(elements, path)
   case field_value {
-    ShortText(_) -> ShortText(value:)
+    ShortText(..) -> ShortText(value:)
+    LongText(..) -> LongText(value:)
     other -> other
   }
 }
@@ -334,7 +337,7 @@ fn collect_triggers_from_element(
   }
 }
 
-fn view(model: Model) {
+pub fn view(model: Model) {
   use <- bool.guard(
     when: model == NoCharacterSelected,
     return: view_no_character_selected(),
@@ -483,8 +486,26 @@ fn view_field_value(
         Numeric -> view_numeric_resource(path, v, max)
         Counter -> view_counter_resource(path, v, max)
       }
-    LongText(value:) -> todo
-    sheet.Link(href:) -> todo
+    LongText(value:) -> {
+      html.textarea([event.on_input(UserSetText(path, _))], value)
+    }
+    sheet.Link(href:) -> {
+      html.a([attribute.href(href)], [
+        // <path xmlns="http://www.w3.org/2000/svg" fill="#FFF" stroke="#06D" stroke-width="10" d="m43,35H5v60h60V57M45,5v10l10,10-30,30 20,20 30-30 10,10h10V5z"/>
+        html.svg([], [
+          svg.path([
+            attribute.attribute("xmlns", "http://www.w3.org/2000/svg"),
+            attribute.attribute("fill", "#FFF"),
+            attribute.attribute("stroke", "#06D"),
+            attribute.attribute("stroke-width", "10"),
+            attribute.attribute(
+              "d",
+              "m43,35H5v60h60V57M45,5v10l10,10-30,30 20,20 30-30 10,10h10V5z",
+            ),
+          ]),
+        ]),
+      ])
+    }
   }
 }
 
