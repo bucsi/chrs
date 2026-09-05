@@ -13,8 +13,8 @@ import atto/text_util
 import chrs/sheet.{
   type CheckboxValue, type Element, type FieldValue, type RecoveryKind,
   type RecoveryRule, type ResourceKind, type Sheet, ByAmount, Checkbox, Counter,
-  Group, Integer, LongText, Modifier, NoChange, Numeric, Off, On, RecoveryRule,
-  Reference, Resource, Sheet, ShortText, Special, ToFull, ToHalfMax, ToZero,
+  Group, Integer, Link, LongText, Modifier, NoChange, Numeric, Off, On,
+  RecoveryRule, Resource, Sheet, ShortText, Special, ToFull, ToHalfMax, ToZero,
   Value,
 }
 
@@ -93,7 +93,7 @@ fn field_value() -> atto.Parser(FieldValue, String, String, a, b) {
   ops.choice([
     resource(Numeric, "resource"),
     resource(Counter, "counter"),
-    reference(),
+    link(),
     checkbox(),
     modifier(),
     integer(),
@@ -102,22 +102,11 @@ fn field_value() -> atto.Parser(FieldValue, String, String, a, b) {
   ])
 }
 
-fn reference() -> atto.Parser(FieldValue, String, String, a, b) {
-  use _ <- atto.do(keyword("["))
-  use label <- atto.do(ops.maybe(text.match("[^\\]]+")))
-  use _ <- atto.do(keyword("]"))
-  use href <- atto.do(ops.maybe(href_group()))
-  atto.pure(Reference(
-    label: label |> result.unwrap("") |> string.trim(),
-    href: href |> result.unwrap(""),
-  ))
-}
-
-fn href_group() -> atto.Parser(String, String, String, a, b) {
-  use _ <- atto.do(keyword("("))
-  use href <- atto.do(ops.maybe(text.match("[^)]+")))
-  use _ <- atto.do(keyword(")"))
-  atto.pure(href |> result.unwrap("") |> string.trim())
+fn link() -> atto.Parser(FieldValue, String, String, a, b) {
+  use <- atto.label("< link >")
+  use link <- atto.do(lexeme(text.match("<[^>]*>")))
+  let link_content = link |> string.drop_start(1) |> string.drop_end(1)
+  atto.pure(Link(link_content))
 }
 
 fn integer() -> atto.Parser(FieldValue, String, String, a, b) {

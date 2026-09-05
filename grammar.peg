@@ -14,7 +14,7 @@ CharacterSheet {
               | Checkbox
               | Modifier
               | Integer
-              | Ref
+              | Link
               | ShortText
               | LongText
 
@@ -44,7 +44,7 @@ CharacterSheet {
   Checkbox    = "On" | "Off" | "Special"
   Modifier    = ("+" | "-") digit+
   Integer     = digit+
-  Ref         = "[" (~"]" any)* "]" ("(" (~")" any)* ")")?
+  Link        = "<" (~">" any)* ">"
   // whitespace between tokens is always insignificant, per convention —
   // so "] (" and "](" are equivalent, no special-casing needed here
 }

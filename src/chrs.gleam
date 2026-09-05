@@ -485,7 +485,7 @@ fn view_field_value(
         Counter -> view_counter_resource(path, v, max)
       }
     LongText(value:) -> todo
-    sheet.Reference(label:, href:) -> todo
+    sheet.Link(href:) -> todo
   }
 }
 
