@@ -13,7 +13,7 @@ pub type Element {
 pub type FieldValue {
   ShortText(value: String)
   LongText(value: String)
-  Reference(label: String, href: String)
+  Link(href: String)
   Integer(value: Int)
   Modifier(value: Int)
   Checkbox(value: CheckboxValue)
@@ -100,7 +100,7 @@ fn field_value_to_json(field_value: FieldValue) -> json.Json {
         #("recovery", recovery_rule_to_json(recovery)),
       ])
     LongText(value:) -> todo
-    Reference(label:, href:) -> todo
+    Link(href:) -> todo
   }
 }
 

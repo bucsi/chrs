@@ -4,8 +4,8 @@ import gleeunit
 
 import chrs/parser
 import chrs/sheet.{
-  Checkbox, Counter, Group, Integer, LongText, Modifier, Numeric, Reference,
-  Resource, Sheet, ShortText, Value,
+  Checkbox, Counter, Group, Integer, Link, LongText, Modifier, Numeric, Resource,
+  Sheet, ShortText, Value,
 }
 
 pub fn main() {
@@ -30,13 +30,9 @@ pub fn parser_test() {
   )
 
   testcase(
-    [Value(name, Reference("telex", "https://telex.hu"))],
-    name <> ": [telex](https://telex.hu)",
+    [Value(name, Link("https://telex.hu"))],
+    name <> ": <https://telex.hu>",
   )
-
-  testcase([Value(name, Reference("telex", ""))], name <> ": [telex]()")
-
-  testcase([Value(name, Reference("telex", ""))], name <> ": [telex]")
 
   testcase([Value(name, Integer(1))], name <> ": 1")
 
@@ -161,21 +157,12 @@ pub fn parser_test() {
     name <> ": resource {9/10 [ ] to_full}",
   )
 
-  testcase([Value(name, Reference("", ""))], name <> ": []")
-  testcase([Value(name, Reference("", ""))], name <> ": []()")
-  testcase([Value(name, Reference("", "https://x"))], name <> ": [](https://x)")
-
   testcase(
     [
-      Value(name, Reference("telex", "https://telex.hu")),
+      Value(name, Link("https://telex.hu")),
       Value("Next", Integer(1)),
     ],
-    name <> ": [telex](https://telex.hu)\nNext: 1",
-  )
-
-  testcase(
-    [Value(name, Reference("telex", "https://telex.hu"))],
-    name <> ": [telex] (https://telex.hu)",
+    name <> ": <https://telex.hu> Next: 1",
   )
 
   testcase(
@@ -213,7 +200,7 @@ pub fn explain_test() {
   // exercising the "Expected ..." / "Expected one of ..." branch.
   let input = "Name: @@@"
   let assert Error(msg) =
-    input |> parser.run |> result.map_error(parser.explain(_, input)) |> echo
+    input |> parser.run |> result.map_error(parser.explain(_, input))
   assert string.contains(msg, "Parse error:")
   assert string.contains(msg, "Expected")
 
