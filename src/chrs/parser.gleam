@@ -13,9 +13,8 @@ import atto/text_util
 import chrs/sheet.{
   type CheckboxValue, type Element, type FieldValue, type RecoveryKind,
   type RecoveryRule, type ResourceKind, type Sheet, ByAmount, Checkbox, Counter,
-  Group, Integer, Link, LongText, Modifier, NoChange, Numeric, Off, On,
-  RecoveryRule, Resource, Sheet, ShortText, Special, ToFull, ToHalfMax, ToZero,
-  Value,
+  Group, Integer, Link, LongText, Modifier, Numeric, Off, On, RecoveryRule,
+  Resource, Sheet, ShortText, Special, ToFull, ToHalfMax, ToZero, Value,
 }
 
 // Helper combinator to handle trailing whitespace around tokens and literals
@@ -95,7 +94,7 @@ fn field_value() -> atto.Parser(FieldValue, String, String, a, b) {
     resource(Counter, "counter"),
     link(),
     checkbox(),
-    modifier(),
+    modifier_value(into: Modifier),
     integer(),
     short_text(),
     long_text(),
@@ -114,11 +113,13 @@ fn integer() -> atto.Parser(FieldValue, String, String, a, b) {
   atto.pure(Integer(digits))
 }
 
-fn modifier() -> atto.Parser(FieldValue, String, String, a, b) {
+fn modifier_value(
+  into constructor: fn(Int) -> field_value,
+) -> atto.Parser(field_value, String, String, a, b) {
   use <- atto.label("modifier (+-N)")
   use mod_str <- atto.do(lexeme(text.match("[+-][0-9]+")))
   case int.parse(mod_str) {
-    Ok(n) -> atto.pure(Modifier(n))
+    Ok(n) -> atto.pure(constructor(n))
     Error(_) -> atto.fail_msg("Could not parse modifier")
   }
 }
@@ -177,15 +178,6 @@ fn recovery_kind() -> atto.Parser(RecoveryKind, String, String, a, b) {
     keyword("to_full") |> atto.map(fn(_) { ToFull }),
     keyword("to_half") |> atto.map(fn(_) { ToHalfMax }),
     keyword("to_zero") |> atto.map(fn(_) { ToZero }),
-    keyword("no_change") |> atto.map(fn(_) { NoChange }),
-    modifier_recovery(),
+    modifier_value(into: ByAmount),
   ])
-}
-
-fn modifier_recovery() -> atto.Parser(RecoveryKind, String, String, a, b) {
-  use mod_val <- atto.do(lexeme(text.match("[+-][0-9]+")))
-  case int.parse(mod_val) {
-    Ok(n) -> atto.pure(ByAmount(n))
-    Error(_) -> atto.fail_msg("Could not parse modifier-based recovery")
-  }
 }

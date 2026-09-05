@@ -92,15 +92,6 @@ pub fn parser_test() {
     ],
     name <> ": resource {9/10 [] to_zero}",
   )
-  testcase(
-    [
-      Value(
-        name,
-        Resource(9, 10, sheet.RecoveryRule([], sheet.NoChange), Numeric),
-      ),
-    ],
-    name <> ": resource {9/10 [] no_change}",
-  )
 
   testcase(
     [
