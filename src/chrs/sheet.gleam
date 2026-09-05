@@ -73,8 +73,18 @@ fn field_value_to_json(field_value: FieldValue) -> json.Json {
   case field_value {
     ShortText(value:) ->
       json.object([
-        #("type", json.string("text")),
+        #("type", json.string("short_text")),
         #("value", json.string(value)),
+      ])
+    LongText(value:) ->
+      json.object([
+        #("type", json.string("long_text")),
+        #("value", json.string(value)),
+      ])
+    Link(href:) ->
+      json.object([
+        #("type", json.string("link")),
+        #("href", json.string(href)),
       ])
     Integer(value:) ->
       json.object([
@@ -96,11 +106,9 @@ fn field_value_to_json(field_value: FieldValue) -> json.Json {
         #("type", json.string("resource")),
         #("value", json.int(value)),
         #("max", json.int(max)),
-        #("kind", resource_kind_to_json(kind)),
         #("recovery", recovery_rule_to_json(recovery)),
+        #("kind", resource_kind_to_json(kind)),
       ])
-    LongText(value:) -> todo
-    Link(href:) -> todo
   }
 }
 
@@ -181,9 +189,17 @@ fn element_decoder() -> decode.Decoder(Element) {
 fn field_value_decoder() -> decode.Decoder(FieldValue) {
   use variant <- decode.field("type", decode.string)
   case variant {
-    "text" -> {
+    "short_text" -> {
       use value <- decode.field("value", decode.string)
       decode.success(ShortText(value:))
+    }
+    "long_text" -> {
+      use value <- decode.field("value", decode.string)
+      decode.success(LongText(value:))
+    }
+    "link" -> {
+      use href <- decode.field("href", decode.string)
+      decode.success(Link(href:))
     }
     "integer" -> {
       use value <- decode.field("value", decode.int)
